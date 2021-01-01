@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <title>identify | buzzer</title>
+    </head>
+    <body style="text-align:center;">
+        What is your name?<br/>
+        <input name="input"></input>
+        <button name="submit">submit</button>
+    </body>
+    <script>
+        $(document).ready(function(){
+            $("[name='submit']").click(function(){
+                var name = $("[name='input']").val();
+                console.log("Redirecting user to " + window.location.href + name);
+                window.location.replace(window.location.href + name);
+            });
+        });
+    </script>
+</html>
