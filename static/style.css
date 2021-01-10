@@ -1,0 +1,67 @@
+button {
+    background-color: #434C5E;
+    border: none;
+    color: #ECEFF4;
+    border-radius: 8px;
+}
+
+.player {
+    font-weight: bold;
+    color: #88C0D0;
+}
+
+select {
+    background-color: #434C5E;
+    border: none;
+    color: #ECEFF4;
+    border-radius: 8px;
+    padding: 10px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    overflow: hidden;
+    text-indent: 1px;
+    text-overflow: '';
+}
+
+select:hover {
+    background-color: #4C566A;
+    cursor: pointer;
+}
+
+button.large {
+    padding: 17px;
+    margin: 10px;
+}
+
+button:hover {
+    background-color: #4C566A;
+    cursor: pointer;
+}
+
+body {
+    background-color: #2E3440;
+    color: #ECEFF4;
+    text-align: center;
+}
+
+#state {
+    font-weight: bold;
+}
+
+input {
+    background-color: #434C5E;
+    border: 2px solid #88C0D0;
+    border-radius: 8px;
+    color: #ECEFF4;
+    padding: 15px;
+    margin: 15px;
+}
+
+:focus {
+    outline: none;
+}
+
+* {
+    font-family: 'Fira Code', monospace;
+    font-size: 20pt;
+}

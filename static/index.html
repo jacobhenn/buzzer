@@ -1,21 +1,26 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-        <title>identify | buzzer</title>
+        <title>buzzer</title>
+        <link rel="preconnect" href="https://fonts.gstatic.com">
+        <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap"
+              rel="stylesheet">
+        <link rel="stylesheet" href="static/style.css">
     </head>
-    <body style="text-align:center;">
-        What is your name?<br/>
-        <input name="input"></input>
-        <button name="submit">submit</button>
+    <body>
+        Will you be
+        <button onclick="redirect(playpath)">answering</button> or
+        <button onclick="redirect(readpath)">reading</button>
+        questions? (click one)
+        <script>
+            let url = "http://127.0.0.1:8080/"
+            let playpath = "static/name.html"
+            let readpath = "static/read.html"
+
+            function redirect(path) {
+                console.log("redirecting");
+                location.assign(url + path);
+            }
+        </script>
     </body>
-    <script>
-        $(document).ready(function(){
-            $("[name='submit']").click(function(){
-                var name = $("[name='input']").val();
-                console.log("Redirecting user to " + window.location.href + name);
-                window.location.replace(window.location.href + name);
-            });
-        });
-    </script>
 </html>
