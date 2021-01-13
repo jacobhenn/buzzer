@@ -28,3 +28,8 @@ pub fn set_score(teams: &mut Vec<Team>, name: &str, score: i32) {
         }
     });
 }
+
+pub fn sort_teams(teams: &mut Vec<Team>) {
+    teams.sort_by_key(|x| x.score);
+    teams.reverse();
+}

@@ -143,10 +143,12 @@ fn match_command(op_command: Command, state_lock: &mut State) -> HttpResponse {
     match op_command {
         Command::AddScore { name, score } => {
             scorekeeper::add_score(&mut state_lock.scores, &name, score);
+            scorekeeper::sort_teams(&mut state_lock.scores);
             HttpResponse::NoContent().body("")
         }
         Command::SetScore { name, score } => {
             scorekeeper::set_score(&mut state_lock.scores, &name, score);
+            scorekeeper::sort_teams(&mut state_lock.scores);
             HttpResponse::NoContent().body("")
         }
         Command::EndRound => {
@@ -210,8 +212,8 @@ async fn command(
 // returns "truthy" nonempty string if {name} isn't in State.blocked
 #[get("/blocked/{name}")]
 async fn blocked(
-    name: String,
-    app_state: web::Data<Mutex<State>>,
+    name: web::Path<String>,
+    app_state: web::Data<Mutex<State>>
 ) -> HttpResponse {
     let state_lock = app_state.lock().unwrap();
 
@@ -256,6 +258,7 @@ async fn main() -> std::io::Result<()> {
             .service(state)
             .service(blocked)
             .service(scores)
+            .service(all_blocked)
     })
     .bind("127.0.0.1:8080")?
     .run()

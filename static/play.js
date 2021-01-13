@@ -2,7 +2,10 @@ const url = "http://127.0.0.1:8080/";
 const urlParams = new URLSearchParams(window.location.search);
 const name = urlParams.get("name");
 console.log("player's name is " + name);
-var state;
+var canBuzz = false;
+var state = {
+    state: undefined
+};
 
 async function amBlocked() {
     let response = fetch(url + "blocked/" + name)
@@ -11,37 +14,38 @@ async function amBlocked() {
 }
 
 async function buzz() {
-    console.log("buzzing");
-    let response = await fetch(url + "buzz", {
-        method: "POST",
-        body: name
-    });
+    if (canBuzz) {
+        let response = await fetch(url + "buzz", {
+            method: "POST",
+            body: name
+        });
+    }
 }
 
 function stateCheck(x) {
-    if (x === state) {
+    if (x.state === state.state) {
         ;
     }
     else if (x.state === "Open") {
         amBlocked().then(x => {
             console.log("amBlocked: _" + x + "_")
             if (x) {
-                $("#buzz").hide();
+                canBuzz = false;
                 $("#state").css("color", "#EBCB8B");
                 $("#state").text("you have already buzzed in");
             } else {
-                $("#buzz").show();
+                canBuzz = true;
                 $("#state").css("color", "#A3BE8C")
                 $("#state").text("the buzzer is open");
             }
         });
     }
     else if (x.state === "Closed") {
-        $("#buzz").hide();
+        canBuzz = false;
         $("#state").css("color","#BF616A");
         $("#state").text("the buzzer is closed");
     } else {
-        $("#buzz").hide();
+        canBuzz = false;
 
         let livePlayer = x.player;
         if (livePlayer !== name) {
@@ -52,6 +56,19 @@ function stateCheck(x) {
             $("#state").css("color","#88C0D0");
         }
     }
+}
+
+async function updateScores() {
+    let response = fetch(url + "state/scores")
+        .then(x => x.json());
+
+    let formattedResponse = "";
+
+    response.then(x => x.map(
+        y => formattedResponse += y.name + " " + y.score + "<br/>"
+    ));
+
+    response.then(x => $("#scores").html(formattedResponse));
 }
 
 async function updateState() {
@@ -67,9 +84,11 @@ async function updateStateContinuous() {
     setTimeout(updateStateContinuous, 200);
 }
 
-$("#buzz").on("click", function() {
-    buzz();
-});
+$("body").keydown(function(event) {
+    if (event.code === $("#key").val()) {
+        buzz();
+    }
+})
 
 fetch(url + "command", {
     method: "POST",
@@ -77,4 +96,5 @@ fetch(url + "command", {
     body: JSON.stringify({action: 'AddTeam', name: name})
 });
 
+updateScores();
 updateStateContinuous();

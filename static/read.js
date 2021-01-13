@@ -14,7 +14,7 @@ async function post(path, body) {
 
 function stateCheck(x) {
     if (x.state === state.state) {
-        console.log("skipped statecheck");
+        ;
     }
     else if (x.state === "Open") {
         $("#wait").show();
@@ -36,10 +36,6 @@ function stateCheck(x) {
     }
 }
 
-function teamToString(x) {
-    return x.name + " " + x.score;
-}
-
 async function updateScores() {
     let response = fetch(url + "state/scores")
         .then(x => x.json());
@@ -51,8 +47,6 @@ async function updateScores() {
     ));
 
     response.then(x => $("#scores").html(formattedResponse));
-
-    // response.then(x => $("#scores").text(x));
 }
 
 async function updateState() {
@@ -90,6 +84,12 @@ $("#open").on("click", function() {
 $("#incorrect").on("click", function() {
     command({
         action: "OpenBuzzer"
+    });
+});
+
+$("#end-round").on("click", function() {
+    command({
+        action: "EndRound"
     });
 });
 
