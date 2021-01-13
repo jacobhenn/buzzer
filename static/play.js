@@ -4,6 +4,12 @@ const name = urlParams.get("name");
 console.log("player's name is " + name);
 var state;
 
+async function amBlocked() {
+    let response = fetch(url + "blocked/" + name)
+        .then(x => x.text());
+    return response;
+}
+
 async function buzz() {
     console.log("buzzing");
     let response = await fetch(url + "buzz", {
@@ -17,9 +23,18 @@ function stateCheck(x) {
         ;
     }
     else if (x.state === "Open") {
-        $("#buzz").show();
-        $("#state").css("color", "#A3BE8C")
-        $("#state").text("the buzzer is open");
+        amBlocked().then(x => {
+            console.log("amBlocked: _" + x + "_")
+            if (x) {
+                $("#buzz").hide();
+                $("#state").css("color", "#EBCB8B");
+                $("#state").text("you have already buzzed in");
+            } else {
+                $("#buzz").show();
+                $("#state").css("color", "#A3BE8C")
+                $("#state").text("the buzzer is open");
+            }
+        });
     }
     else if (x.state === "Closed") {
         $("#buzz").hide();

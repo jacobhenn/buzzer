@@ -1,9 +1,18 @@
+#![deny(clippy::all)]
+#![deny(clippy::pedantic)]
+#![deny(clippy::nursery)]
+#![deny(clippy::cargo)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::multiple_crate_versions)]
+#![allow(clippy::cargo_common_metadata)]
+
 mod scorekeeper;
 
-use actix_web::{get, post, web, App, HttpServer, HttpResponse};
-use serde::{Deserialize, Serialize};
 use crate::scorekeeper::Team;
 use actix_files as fs;
+use actix_web::{get, post, web, App, HttpResponse, HttpServer};
+use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -12,10 +21,8 @@ use std::sync::Mutex;
 //     - the current state of the buzzer
 // What the client needs to POST:
 //     - (player) that they've buzzed
-//     - (reader) open the buzzer
-//     - (reader) close the buzzer
-//     - (reader) clear the blocked players
-//     - (reader) mainpulate scores
+//     - (reader) send commands
+//     - (op) send commands
 //
 // Server URIs:
 //     - "/": asks user if they are Contestant or Host
@@ -27,6 +34,7 @@ use std::sync::Mutex;
 //     - "/state/scores": provides scores in text form
 //     - "/buzz": contestants can POST to buzz
 //     - "/command": host can POST a Command to execute it
+//     - "/op": op can POST a Command to execute it
 
 ////////////////////////////////////////////////////////////////////////////////
 // the Buzzer can either be open, closed, or taken by a player.
@@ -41,15 +49,15 @@ enum Buzzer {
 
 impl Buzzer {
     fn open(&mut self) {
-        *self = Buzzer::Open;
+        *self = Self::Open;
     }
 
     fn close(&mut self) {
-        *self = Buzzer::Closed;
+        *self = Self::Closed;
     }
 
     fn take(&mut self, name: String) {
-        *self = Buzzer::TakenBy { player: name };
+        *self = Self::TakenBy { player: name };
     }
 }
 
@@ -63,14 +71,14 @@ struct State {
 }
 
 impl State {
-    fn new() -> State {
+    const fn new() -> Self {
         let new_scores: Vec<Team> = Vec::new();
         let new_blocked: Vec<String> = Vec::new();
 
-        State {
+        Self {
             buzzer: Buzzer::Closed,
             scores: new_scores,
-            blocked: new_blocked
+            blocked: new_blocked,
         }
     }
 }
@@ -89,8 +97,8 @@ enum Command {
     RemoveTeam { name: String },
     AddTeam { name: String },
     // special commands
-    EmptyTeams,
-    EmptyBlocked,
+    ClearTeams,
+    ClearBlocked,
     RemoveBlocked { name: String },
     AddBlocked { name: String },
     CloseBuzzer,
@@ -117,15 +125,74 @@ async fn state(app_state: web::Data<Mutex<State>>) -> HttpResponse {
 #[post("/buzz")]
 async fn buzz(
     name: String,
-    app_state: web::Data<Mutex<State>>
+    app_state: web::Data<Mutex<State>>,
 ) -> HttpResponse {
     let mut state_lock = app_state.lock().unwrap();
 
-    if state_lock.buzzer == Buzzer::Open {
+    let is_blocked = state_lock.blocked.contains(&name);
+
+    if state_lock.buzzer == Buzzer::Open && !is_blocked {
         state_lock.blocked.push(name.clone());
         state_lock.buzzer.take(name);
     }
+
     HttpResponse::Ok().json(&state_lock.buzzer)
+}
+
+fn match_command(op_command: Command, state_lock: &mut State) -> HttpResponse {
+    match op_command {
+        Command::AddScore { name, score } => {
+            scorekeeper::add_score(&mut state_lock.scores, &name, score);
+            HttpResponse::NoContent().body("")
+        }
+        Command::SetScore { name, score } => {
+            scorekeeper::set_score(&mut state_lock.scores, &name, score);
+            HttpResponse::NoContent().body("")
+        }
+        Command::EndRound => {
+            state_lock.blocked.clear();
+            state_lock.buzzer.close();
+            HttpResponse::NoContent().body("")
+        }
+        Command::OpenBuzzer => {
+            state_lock.buzzer.open();
+            HttpResponse::NoContent().body("")
+        }
+        Command::AddTeam { name } => {
+            for team in &state_lock.scores {
+                if team.name == name {
+                    return HttpResponse::NoContent().body("");
+                }
+            }
+            state_lock.scores.push(Team { name, score: 0 });
+
+            HttpResponse::NoContent().body("")
+        }
+        Command::RemoveTeam { name } => {
+            state_lock.scores.retain(|x| x.name != name);
+            HttpResponse::NoContent().body("")
+        }
+        Command::ClearTeams => {
+            state_lock.scores.clear();
+            HttpResponse::NoContent().body("")
+        }
+        Command::ClearBlocked => {
+            state_lock.blocked.clear();
+            HttpResponse::NoContent().body("")
+        }
+        Command::RemoveBlocked { name } => {
+            state_lock.blocked.retain(|x| *x != name );
+            HttpResponse::NoContent().body("")
+        }
+        Command::AddBlocked { name } => {
+            state_lock.blocked.push(name);
+            HttpResponse::NoContent().body("")
+        }
+        Command::CloseBuzzer => {
+            state_lock.buzzer.close();
+            HttpResponse::NoContent().body("")
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,60 +200,35 @@ async fn buzz(
 #[post("/command")]
 async fn command(
     command: web::Json<Command>,
-    app_state: web::Data<Mutex<State>>
+    app_state: web::Data<Mutex<State>>,
 ) -> HttpResponse {
     let mut state_lock = app_state.lock().unwrap();
-
-    match command.into_inner() {
-        Command::AddScore { name, score } => {
-            scorekeeper::add_score(&mut state_lock.scores, name, score);
-            HttpResponse::NoContent().body("")
-        },
-        Command::SetScore { name, score } => {
-            scorekeeper::set_score(&mut state_lock.scores, name, score);
-            HttpResponse::NoContent().body("")
-        },
-        Command::EndRound => {
-            state_lock.blocked.clear();
-            state_lock.buzzer.close();
-            HttpResponse::NoContent().body("")
-        },
-        Command::OpenBuzzer => {
-            state_lock.buzzer.open();
-            HttpResponse::NoContent().body("")
-        },
-        Command::AddTeam { name } => {
-            state_lock.scores.push(
-                Team {
-                    name: name,
-                    score: 0
-                }
-            );
-            HttpResponse::NoContent().body("")
-        },
-        Command::RemoveTeam { name } => {
-            state_lock.scores.retain(
-                |x| x.name != name
-            );
-            HttpResponse::NoContent().body("")
-        },
-        _ => HttpResponse::BadRequest().body(""),
-    }
+    match_command(command.into_inner(), &mut state_lock)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // returns "truthy" nonempty string if {name} isn't in State.blocked
-#[post("/blocked/{name}")]
+#[get("/blocked/{name}")]
 async fn blocked(
-    name: String, app_state: web::Data<Mutex<State>>
+    name: String,
+    app_state: web::Data<Mutex<State>>,
 ) -> HttpResponse {
     let state_lock = app_state.lock().unwrap();
 
     if state_lock.blocked.contains(&name) {
-        HttpResponse::Ok().body(" ")
+        HttpResponse::Ok().body("!")
     } else {
         HttpResponse::Ok().body("")
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// ops can get the full list of blockeds
+#[get("/state/blocked")]
+async fn all_blocked(app_state: web::Data<Mutex<State>>) -> HttpResponse {
+    let state_lock = app_state.lock().unwrap();
+
+    HttpResponse::Ok().json(&state_lock.blocked)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,9 +237,7 @@ async fn blocked(
 async fn scores(app_state: web::Data<Mutex<State>>) -> HttpResponse {
     let state_lock = app_state.lock().unwrap();
 
-    let formatted_scores = format!("{:#?}", state_lock.scores);
-
-    HttpResponse::Ok().body(formatted_scores)
+    HttpResponse::Ok().json(&state_lock.scores)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,7 +245,7 @@ async fn scores(app_state: web::Data<Mutex<State>>) -> HttpResponse {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let app_state = web::Data::new(Mutex::new(State::new()));
-    
+
     HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())

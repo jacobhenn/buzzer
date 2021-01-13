@@ -13,18 +13,18 @@ impl fmt::Display for Team {
     }
 }
 
-pub fn add_score(teams: &mut Vec<Team>, name: String, score: i32) {
-    teams.into_iter().for_each(
-        |x| if x.name == name {
+pub fn add_score(teams: &mut Vec<Team>, name: &str, score: i32) {
+    teams.iter_mut().for_each(|x| {
+        if x.name == *name {
             x.score += score;
         }
-    );
+    });
 }
 
-pub fn set_score(teams: &mut Vec<Team>, name: String, score: i32) {
-    teams.into_iter().for_each(
-        |x| if x.name == name {
+pub fn set_score(teams: &mut Vec<Team>, name: &str, score: i32) {
+    teams.iter_mut().for_each(|x| {
+        if x.name == *name {
             x.score = score;
         }
-    );
+    });
 }
