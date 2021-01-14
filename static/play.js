@@ -27,22 +27,27 @@ function stateCheck(x) {
         ;
     }
     else if (x.state === "Open") {
+        $("body").focus();
         amBlocked().then(x => {
             console.log("amBlocked: _" + x + "_")
             if (x) {
                 canBuzz = false;
-                $("#state").css("color", "#EBCB8B");
                 $("#state").text("you have already buzzed in");
+                $("#state").css("color", "#EBCB8B");
+                $("#topbar").css("background-color", "#EBCB8B");
             } else {
                 canBuzz = true;
                 $("#state").css("color", "#A3BE8C")
+                $("#topbar").css("background-color", "#A3BE8C")
                 $("#state").text("the buzzer is open");
             }
         });
     }
     else if (x.state === "Closed") {
         canBuzz = false;
+        updateScores();
         $("#state").css("color","#BF616A");
+        $("#topbar").css("background-color","#BF616A");
         $("#state").text("the buzzer is closed");
     } else {
         canBuzz = false;
@@ -51,9 +56,11 @@ function stateCheck(x) {
         if (livePlayer !== name) {
             $("#state").text(livePlayer + " has buzzed in");
             $("#state").css("color","#BF616A");
+            $("#topbar").css("background-color","#BF616A");
         } else {
             $("#state").text("you have buzzed in");
             $("#state").css("color","#88C0D0");
+            $("#topbar").css("background-color","#88C0D0");
         }
     }
 }
