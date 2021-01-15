@@ -40,11 +40,11 @@ use std::sync::Mutex;
 // the Buzzer can either be open, closed, or taken by a player.
 // the Buzzer state can be serialized and sent as JSON
 #[derive(Serialize, PartialEq)]
-#[serde(tag = "state")]
+#[serde(tag = "buzzer")]
 enum Buzzer {
     Open,
     Closed,
-    TakenBy { player: String },
+    TakenBy { owner: String },
 }
 
 impl Buzzer {
@@ -57,7 +57,7 @@ impl Buzzer {
     }
 
     fn take(&mut self, name: String) {
-        *self = Self::TakenBy { player: name };
+        *self = Self::TakenBy { owner: name };
     }
 }
 
