@@ -47,8 +47,10 @@
     return fetch(url + "state/scores").then((response) => {
       return response.json();
     }).then(function(response) {
-      return $("#scores").html((response.map((team) => {
-        return team.name + " " + team.score;
+      return $("#scores").text((response.map((team) => {
+        return team.name.filter(char(() => {
+          return !["<", ">"].includes(char);
+        })) + " " + team.score;
       })).join("<br/>"));
     });
   };

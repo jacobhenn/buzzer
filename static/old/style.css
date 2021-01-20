@@ -5,6 +5,16 @@ button {
     border-radius: 8px;
 }
 
+a {
+    background-color: #434C5E;
+    border: none;
+    color: #ECEFF4;
+    border-radius: 8px;
+    text-decoration: none;
+    padding-right: 5px;
+    padding-left: 5px;
+}
+
 .player {
     font-weight: bold;
     color: #88C0D0;
@@ -38,6 +48,11 @@ select:hover {
 button.large {
     padding: 17px;
     margin: 10px;
+}
+
+a:hover {
+    background-color: #4C566A;
+    cursor: pointer;
 }
 
 button:hover {

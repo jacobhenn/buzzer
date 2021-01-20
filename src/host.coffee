@@ -33,9 +33,9 @@ updateScores = ->
   fetch url + "state/scores"
     .then (response) => response .json()
     .then (response) ->
-      $("#scores") .html (
+      $("#scores") .text (
           response .map (team) =>
-            team.name + " " + team.score
+            team.name.filter(char => !["<",">"].includes(char)) + " " + team.score
       ) .join "<br/>"
 
 # fetch the state of the buzzer and update the page accordingly
