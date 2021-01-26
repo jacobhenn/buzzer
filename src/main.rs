@@ -40,39 +40,23 @@ use std::sync::Mutex;
 // the Buzzer can either be open, closed, or taken by a player.
 // the Buzzer state can be serialized and sent as JSON
 #[derive(Serialize, PartialEq)]
-#[serde(tag = "buzzer")]
-enum Buzzer {
-    Open,
-    Closed,
-    TakenBy { owner: String },
-}
+#[serde(tag = "state")]
+enum Buzzer { Open, Closed, TakenBy { owner: String } }
 
 impl Buzzer {
-    fn open(&mut self) {
-        *self = Self::Open;
-    }
-
-    fn close(&mut self) {
-        *self = Self::Closed;
-    }
-
-    fn take(&mut self, name: String) {
-        *self = Self::TakenBy { owner: name };
-    }
+    fn open (&mut self)               { *self = Self::Open;   }
+    fn close(&mut self)               { *self = Self::Closed; }
+    fn take (&mut self, name: String) { *self = Self::TakenBy { owner: name }; }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // State contains a Buzzer, a list of players who have already buzzed, and a
 // list of teams' scores
-struct State {
-    buzzer: Buzzer,
-    scores: Vec<Team>,
-    blocked: Vec<String>,
-}
+struct State { buzzer: Buzzer, scores: Vec<Team>, blocked: Vec<String> }
 
 impl State {
     const fn new() -> Self {
-        let new_scores: Vec<Team> = Vec::new();
+        let new_scores:  Vec<Team>   = Vec::new();
         let new_blocked: Vec<String> = Vec::new();
 
         Self {
@@ -109,7 +93,7 @@ enum Command {
 async fn index() -> HttpResponse {
     HttpResponse::Ok()
         .content_type("text/html")
-        .body(include_str!("../static/index.html"))
+        .body(include_str!("../static/contestant/index.html"))
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,7 +112,6 @@ async fn buzz(
     app_state: web::Data<Mutex<State>>,
 ) -> HttpResponse {
     let mut state_lock = app_state.lock().unwrap();
-
     let is_blocked = state_lock.blocked.contains(&name);
 
     if state_lock.buzzer == Buzzer::Open && !is_blocked {
@@ -183,7 +166,7 @@ fn match_command(op_command: Command, state_lock: &mut State) -> HttpResponse {
             HttpResponse::NoContent().body("")
         }
         Command::RemoveBlocked { name } => {
-            state_lock.blocked.retain(|x| *x != name );
+            state_lock.blocked.retain(|x| *x != name);
             HttpResponse::NoContent().body("")
         }
         Command::AddBlocked { name } => {
@@ -203,7 +186,8 @@ fn match_command(op_command: Command, state_lock: &mut State) -> HttpResponse {
 async fn command(
     command: web::Json<Command>,
     app_state: web::Data<Mutex<State>>,
-) -> HttpResponse {
+) -> HttpResponse
+{
     let mut state_lock = app_state.lock().unwrap();
     match_command(command.into_inner(), &mut state_lock)
 }
@@ -213,15 +197,12 @@ async fn command(
 #[get("/blocked/{name}")]
 async fn blocked(
     name: web::Path<String>,
-    app_state: web::Data<Mutex<State>>
-) -> HttpResponse {
+    app_state: web::Data<Mutex<State>>,
+) -> HttpResponse
+{
     let state_lock = app_state.lock().unwrap();
-
-    if state_lock.blocked.contains(&name) {
-        HttpResponse::Ok().body("!")
-    } else {
-        HttpResponse::Ok().body("")
-    }
+    if state_lock.blocked.contains(&name) { HttpResponse::Ok().body("!") }
+    else                                  { HttpResponse::Ok().body("")  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,7 +210,6 @@ async fn blocked(
 #[get("/state/blocked")]
 async fn all_blocked(app_state: web::Data<Mutex<State>>) -> HttpResponse {
     let state_lock = app_state.lock().unwrap();
-
     HttpResponse::Ok().json(&state_lock.blocked)
 }
 
@@ -238,7 +218,6 @@ async fn all_blocked(app_state: web::Data<Mutex<State>>) -> HttpResponse {
 #[get("/state/scores")]
 async fn scores(app_state: web::Data<Mutex<State>>) -> HttpResponse {
     let state_lock = app_state.lock().unwrap();
-
     HttpResponse::Ok().json(&state_lock.scores)
 }
 
@@ -251,7 +230,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
-            .service(fs::Files::new("/static", "./static").show_files_listing())
+            .service(fs::Files::new("/", "./static").show_files_listing())
             .route("/", web::get().to(index))
             .service(buzz)
             .service(command)
