@@ -9,7 +9,7 @@
 
 mod scorekeeper;
 
-use crate::scorekeeper::Team;
+use crate::scorekeeper::Player;
 use actix_files as fs;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer};
 use serde::{Deserialize, Serialize};
@@ -51,12 +51,12 @@ impl Buzzer {
 
 ////////////////////////////////////////////////////////////////////////////////
 // State contains a Buzzer, a list of players who have already buzzed, and a
-// list of teams' scores
-struct State { buzzer: Buzzer, scores: Vec<Team>, blocked: Vec<String> }
+// list of players' scores
+struct State { buzzer: Buzzer, scores: Vec<Player>, blocked: Vec<String> }
 
 impl State {
     const fn new() -> Self {
-        let new_scores:  Vec<Team>   = Vec::new();
+        let new_scores:  Vec<Player>   = Vec::new();
         let new_blocked: Vec<String> = Vec::new();
 
         Self {
@@ -78,10 +78,10 @@ enum Command {
     SetScore { name: String, score: i32 },
     EndRound,
     OpenBuzzer,
-    RemoveTeam { name: String },
-    AddTeam { name: String },
+    RemovePlayer { name: String },
+    AddPlayer { name: String },
     // special commands
-    ClearTeams,
+    ClearPlayers,
     ClearBlocked,
     RemoveBlocked { name: String },
     AddBlocked { name: String },
@@ -126,12 +126,12 @@ fn match_command(op_command: Command, state_lock: &mut State) -> HttpResponse {
     match op_command {
         Command::AddScore { name, score } => {
             scorekeeper::add_score(&mut state_lock.scores, &name, score);
-            scorekeeper::sort_teams(&mut state_lock.scores);
+            scorekeeper::sort_players(&mut state_lock.scores);
             HttpResponse::NoContent().body("")
         }
         Command::SetScore { name, score } => {
             scorekeeper::set_score(&mut state_lock.scores, &name, score);
-            scorekeeper::sort_teams(&mut state_lock.scores);
+            scorekeeper::sort_players(&mut state_lock.scores);
             HttpResponse::NoContent().body("")
         }
         Command::EndRound => {
@@ -143,21 +143,17 @@ fn match_command(op_command: Command, state_lock: &mut State) -> HttpResponse {
             state_lock.buzzer.open();
             HttpResponse::NoContent().body("")
         }
-        Command::AddTeam { name } => {
-            for team in &state_lock.scores {
-                if team.name == name {
-                    return HttpResponse::NoContent().body("");
-                }
+        Command::AddPlayer { name } => {
+            if state_lock.scores.iter().all(|p| p.name != name) {
+                state_lock.scores.push(Player { name, score: 0 });
             }
-            state_lock.scores.push(Team { name, score: 0 });
-
             HttpResponse::NoContent().body("")
         }
-        Command::RemoveTeam { name } => {
+        Command::RemovePlayer { name } => {
             state_lock.scores.retain(|x| x.name != name);
             HttpResponse::NoContent().body("")
         }
-        Command::ClearTeams => {
+        Command::ClearPlayers => {
             state_lock.scores.clear();
             HttpResponse::NoContent().body("")
         }
@@ -230,7 +226,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
-            .service(fs::Files::new("/", "./static").show_files_listing())
+            .service(fs::Files::new("/static", "./static"))
             .route("/", web::get().to(index))
             .service(buzz)
             .service(command)
