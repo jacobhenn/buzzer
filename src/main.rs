@@ -14,6 +14,8 @@ use actix_files as fs;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer};
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
+use log::{LevelFilter, trace, info};
+use env_logger;
 
 ////////////////////////////////////////////////////////////////////////////////
 // What the client needs to GET:
@@ -90,16 +92,18 @@ enum Command {
 
 ////////////////////////////////////////////////////////////////////////////////
 // asks you if you'll be an reader or a player.
-async fn index() -> HttpResponse {
-    HttpResponse::Ok()
-        .content_type("text/html")
-        .body(include_str!("../static/contestant/index.html"))
-}
+// async fn index() -> HttpResponse {
+//     HttpResponse::Ok()
+//         .content_type("text/html")
+//         .body(include_str!("../static/new/index.html"))
+// }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // returns the current state of the buzzer
 #[get("/state/buzzer")]
 async fn state(app_state: web::Data<Mutex<State>>) -> HttpResponse {
+    trace!("serving /state/buzzer");
     let state_lock = app_state.lock().unwrap();
     HttpResponse::Ok().json(&state_lock.buzzer)
 }
@@ -115,9 +119,10 @@ async fn buzz(
     let is_blocked = state_lock.blocked.contains(&name);
 
     if state_lock.buzzer == Buzzer::Open && !is_blocked {
+        info!("{} has sucessfully buzzed in", &name);
         state_lock.blocked.push(name.clone());
         state_lock.buzzer.take(name);
-    }
+    } else { info!("{} tried to buzz in and was blocked", &name); }
 
     HttpResponse::Ok().json(&state_lock.buzzer)
 }
@@ -184,8 +189,10 @@ async fn command(
     app_state: web::Data<Mutex<State>>,
 ) -> HttpResponse
 {
+    let command_inner = command.into_inner();
+    info!("executing command: {:?}", &command_inner);
     let mut state_lock = app_state.lock().unwrap();
-    match_command(command.into_inner(), &mut state_lock)
+    match_command(command_inner, &mut state_lock)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -196,23 +203,17 @@ async fn blocked(
     app_state: web::Data<Mutex<State>>,
 ) -> HttpResponse
 {
+    trace!("serving /blocked/{}", &name);
     let state_lock = app_state.lock().unwrap();
     if state_lock.blocked.contains(&name) { HttpResponse::Ok().body("!") }
     else                                  { HttpResponse::Ok().body("")  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// ops can get the full list of blockeds
-#[get("/state/blocked")]
-async fn all_blocked(app_state: web::Data<Mutex<State>>) -> HttpResponse {
-    let state_lock = app_state.lock().unwrap();
-    HttpResponse::Ok().json(&state_lock.blocked)
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// returns text rendering of the current State.scores at "/state/scores"
+// serves JSON object of State.scores at "/state/scores"
 #[get("/state/scores")]
 async fn scores(app_state: web::Data<Mutex<State>>) -> HttpResponse {
+    trace!("serving /state/scores");
     let state_lock = app_state.lock().unwrap();
     HttpResponse::Ok().json(&state_lock.scores)
 }
@@ -221,19 +222,19 @@ async fn scores(app_state: web::Data<Mutex<State>>) -> HttpResponse {
 // main
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    env_logger::init();
     let app_state = web::Data::new(Mutex::new(State::new()));
 
     HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
             .service(fs::Files::new("/static", "./static"))
-            .route("/", web::get().to(index))
+            // .route("/", web::get().to(index))
             .service(buzz)
             .service(command)
             .service(state)
             .service(blocked)
             .service(scores)
-            .service(all_blocked)
     })
     .bind("127.0.0.1:8080")?
     .run()
