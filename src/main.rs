@@ -14,7 +14,8 @@ use actix_files as fs;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer};
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
-use log::{LevelFilter, trace, info};
+use log::{trace, info};
+use std::env;
 use env_logger;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,12 +92,12 @@ enum Command {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// asks you if you'll be an reader or a player.
-// async fn index() -> HttpResponse {
-//     HttpResponse::Ok()
-//         .content_type("text/html")
-//         .body(include_str!("../static/new/index.html"))
-// }
+// home page - redirects you to /static/new/index.html
+async fn index() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("text/html")
+        .body("<!DOCTYPE html><html><head><meta http-equiv='refresh' content='0; URL=/static/new/index.html'></head></html>")
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,20 +224,23 @@ async fn scores(app_state: web::Data<Mutex<State>>) -> HttpResponse {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init();
+    let port = env::args().nth(1).unwrap_or("127.0.0.1:8080".to_string());
+    info!("port is {}", &port);
+
     let app_state = web::Data::new(Mutex::new(State::new()));
 
     HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
             .service(fs::Files::new("/static", "./static"))
-            // .route("/", web::get().to(index))
+            .route("/", web::get().to(index))
             .service(buzz)
             .service(command)
             .service(state)
             .service(blocked)
             .service(scores)
     })
-    .bind("127.0.0.1:8080")?
+    .bind(&port)?
     .run()
     .await
 }

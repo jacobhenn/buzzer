@@ -1,59 +1,89 @@
 @import url('https://fonts.googleapis.com/css2?family=Fira+Code&display=swap');
 
 * {
-    color: #ECEFF4;
+    color: #eceff4;
     font-family: 'Fira Code', monospace;
-    font-size: 20pt;
+    font-size: calc(10px + 2vw);
 }
 
 body {
-    color: #ECEFF4;
+    color: #eceff4;
     font-family: 'Fira Code', monospace;
-    font-size: 20pt;
+    font-size: calc(10px + 2vw);
 
-    background-color: #2E3440;
+    background-color: #2e3440;
     margin: 0px;
     text-align: center;
 }
 
+.header {
+    text-decoration: underline;
+}
+
+hr {
+    background-color: #3b4252;
+    height: 1px;
+    border: 0;
+    width: 90%;
+}
+
 button {
-    background-color: #434C5E;
+    background-color: #434c5e;
     border: none;
     border-radius: 8px;
-    color: #ECEFF4;
+    color: #eceff4;
+    margin: 5px;
+    padding: 5px;
 } button.large {
     margin: 10px;
     padding: 17px;
 } button:hover {
-    background-color: #4C566A;
+    background-color: #4c566a;
     cursor: pointer;
+} button:focus {
+    outline: none;
+} button:disabled {
+    background-color: #3b4252;
+    color: #4c566a;
+} button:disabled:hover {
+    cursor: default;
+} button.hidden {
+    background-color: #2e3440;
+    color: #2e3440;
+    margin: 0px;
+} button.hidden:hover {
+    color: #bf616a;
 }
 
 input {
-    background-color: #434C5E;
-    border: 3px solid #434C5E;
+    background-color: #434c5e;
+    border: 3px solid #434c5e;
     border-radius: 8px;
-    color: #ECEFF4;
+    color: #eceff4;
+    margin: 5px;
+    padding: 5px;
 } input.large {
     margin: 10px;
     padding: 14px;
 } input.hidden {
-    border: 3px solid #2E3440;
-    background-color: #2E3440;
-    max-width: 80px;
+    border: 3px solid #2e3440;
+    background-color: #2e3440;
+    max-width: 10vw;
+    padding: 0px;
+    margin: 0px;
 } input:hover {
-    border: 3px solid #4C566A;
+    border: 3px solid #4c566a;
     cursor: text;
 } input:focus {
-    background-color: #2E3440;
-    border: 3px solid #88C0D0;
+    background-color: #2e3440;
+    border: 3px solid #88c0d0;
     outline: none;
 }
 
 select {
-    background-color: #434C5E;
+    background-color: #434c5e;
     border: none;
-    color: #ECEFF4;
+    color: #eceff4;
     border-radius: 8px;
     padding: 10px;
     -webkit-appearance: none;
@@ -61,7 +91,11 @@ select {
     overflow: hidden;
     text-indent: 1px;
     text-overflow: '';
+    margin: 5px;
+    padding: 5px;
 } select:hover {
-    background-color: #4C566A;
+    background-color: #4c566a;
     cursor: pointer;
+} select:focus {
+    outline: none;
 }
