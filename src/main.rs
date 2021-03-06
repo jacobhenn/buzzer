@@ -59,7 +59,7 @@ struct State { buzzer: Buzzer, scores: Vec<Player>, blocked: Vec<String> }
 
 impl State {
     const fn new() -> Self {
-        let new_scores:  Vec<Player>   = Vec::new();
+        let new_scores:  Vec<Player> = Vec::new();
         let new_blocked: Vec<String> = Vec::new();
 
         Self {
