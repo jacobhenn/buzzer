@@ -10,41 +10,59 @@
 mod scorekeeper;
 
 use crate::scorekeeper::Player;
-use actix_files as fs;
+use actix_files;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer};
 use serde::{Deserialize, Serialize};
+use serde_json;
 use std::sync::Mutex;
-use log::{trace, info};
-use std::env;
-use env_logger;
+use log::{trace, info, warn, error, set_max_level, LevelFilter};
+use env_logger::Env;
+use std::error::Error;
+use std::fs;
+use std::path::Path;
+
+#[cfg(target_family = "unix")]
+const DIR: &str = env!("PWD");
+
+#[cfg(target_family = "windows")]
+const DIR: &str = env!("CD");
+
+#[derive(Deserialize)]
+struct Config {
+    log_level: LevelFilter,
+    address: String,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            log_level: LevelFilter::Warn,
+            address: "127.0.0.1:8080".to_string(),
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-// What the client needs to GET:
-//     - whether they are blocked from buzzing
-//     - the current state of the buzzer
-// What the client needs to POST:
-//     - (player) that they've buzzed
-//     - (reader) send commands
-//     - (op) send commands
-//
-// Server URIs:
-//     - "/": asks user if they are Contestant or Host
-//     - "/static/name.html": gets user's name
-//     - "/static/host.html": host interface
-//     - "/static/contestant.html": contestant interface
+// Full Server URI List:
+//     - "/": serves the svelte app
 //     - "/state/buzzer": responds with Buzzer in JSON form to GET
-//     - "/state/blocked/{name}": nonempty GET response if {name} is blocked
+//     - "/blocked/{name}": nonempty GET response if {name} is blocked
 //     - "/state/scores": provides scores in text form
 //     - "/buzz": contestants can POST to buzz
-//     - "/command": host can POST a Command to execute it
-//     - "/op": op can POST a Command to execute it
+//     - "/command": client can POST a Command to execute it
+//
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 // the Buzzer can either be open, closed, or taken by a player.
 // the Buzzer state can be serialized and sent as JSON
 #[derive(Serialize, PartialEq)]
 #[serde(tag = "state")]
-enum Buzzer { Open, Closed, TakenBy { owner: String } }
+enum Buzzer {
+    Open,
+    Closed,
+    TakenBy { owner: String },
+}
 
 impl Buzzer {
     fn open (&mut self)               { *self = Self::Open;   }
@@ -55,7 +73,11 @@ impl Buzzer {
 ////////////////////////////////////////////////////////////////////////////////
 // State contains a Buzzer, a list of players who have already buzzed, and a
 // list of players' scores
-struct State { buzzer: Buzzer, scores: Vec<Player>, blocked: Vec<String> }
+struct State {
+    buzzer: Buzzer,
+    scores: Vec<Player>,
+    blocked: Vec<String>,
+}
 
 impl State {
     const fn new() -> Self {
@@ -101,7 +123,7 @@ async fn index() -> HttpResponse {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// returns the current state of the buzzer
+// returns the current state of the buzzer in JSON form
 #[get("/state/buzzer")]
 async fn state(app_state: web::Data<Mutex<State>>) -> HttpResponse {
     trace!("serving /state/buzzer");
@@ -183,7 +205,7 @@ fn match_command(op_command: Command, state_lock: &mut State) -> HttpResponse {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// handles clients posting JSON Commands to "/command"
+// handles clients posting JSON Commands
 #[post("/command")]
 async fn command(
     command: web::Json<Command>,
@@ -211,7 +233,7 @@ async fn blocked(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// serves JSON object of State.scores at "/state/scores"
+// returns State.scores in JSON
 #[get("/state/scores")]
 async fn scores(app_state: web::Data<Mutex<State>>) -> HttpResponse {
     trace!("serving /state/scores");
@@ -220,19 +242,44 @@ async fn scores(app_state: web::Data<Mutex<State>>) -> HttpResponse {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// main
+// deserialize a Config from the conf.json file, or create one if it's missing
+fn read_cfg() -> Result<Config, Box<dyn Error>> {
+    let cfg_path = Path::new(DIR).join("conf.json");
+
+    if cfg_path.is_file() {
+        let cfg_str = fs::read_to_string(cfg_path)?;
+        return Ok(serde_json::from_str(&cfg_str)?);
+    } else {
+        warn!("no conf.json found, writing default config to {:#?}", cfg_path);
+        fs::write(
+            cfg_path,
+            r#"{"log_level":"Warn","address":"127.0.0.1:8080"}"#
+        )?;
+        Ok(Default::default())
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// `main` runs `go` and pretty-prints any errors it returns
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    env_logger::init();
-    let port = env::args().nth(1).unwrap_or("127.0.0.1:8080".to_string());
-    info!("port is {}", &port);
+async fn main() {
+    go().await.unwrap_or_else(|err| error!("{}", err));
+}
+
+async fn go() -> Result<(), Box<dyn Error>> {
+    let env = Env::default()
+        .default_filter_or("warn");
+    env_logger::try_init_from_env(env)?;
+
+    let cfg = read_cfg()?;
+    set_max_level(cfg.log_level);
 
     let app_state = web::Data::new(Mutex::new(State::new()));
 
-    HttpServer::new(move || {
+    return Ok(HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
-            .service(fs::Files::new("/static", "./static"))
+            .service(actix_files::Files::new("/static", "./static"))
             .route("/", web::get().to(index))
             .service(buzz)
             .service(command)
@@ -240,7 +287,7 @@ async fn main() -> std::io::Result<()> {
             .service(blocked)
             .service(scores)
     })
-    .bind(&port)?
+    .bind(&cfg.address)?
     .run()
-    .await
+    .await?);
 }
