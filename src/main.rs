@@ -15,7 +15,7 @@ use actix_web::{get, post, web, App, HttpResponse, HttpServer};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::sync::Mutex;
-use log::{trace, info, warn, error, set_max_level, LevelFilter};
+use log::{trace, info, warn, LevelFilter};
 use env_logger::Env;
 use std::error::Error;
 use std::fs;
@@ -114,11 +114,19 @@ enum Command {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// home page - redirects you to /static/new/index.html
+// home page - redirects you to ./client/public/index.html
 async fn index() -> HttpResponse {
     HttpResponse::Ok()
         .content_type("text/html")
-        .body("<!DOCTYPE html><html><head><meta http-equiv='refresh' content='0; URL=/static/new/index.html'></head></html>")
+        .body(
+            "<!DOCTYPE html>
+            <html>
+                <head>
+                    <meta http-equiv='refresh'
+                          content='0; URL=/static/index.html'>
+                </head>
+            </html>"
+        )
 }
 
 
@@ -263,23 +271,22 @@ fn read_cfg() -> Result<Config, Box<dyn Error>> {
 // `main` runs `go` and pretty-prints any errors it returns
 #[actix_web::main]
 async fn main() {
-    go().await.unwrap_or_else(|err| error!("{}", err));
+    go().await.unwrap_or_else(|err| eprintln!("error: {}", err));
 }
 
 async fn go() -> Result<(), Box<dyn Error>> {
-    let env = Env::default()
-        .default_filter_or("warn");
-    env_logger::try_init_from_env(env)?;
-
     let cfg = read_cfg()?;
-    set_max_level(cfg.log_level);
+
+    let env = Env::default()
+        .default_filter_or(cfg.log_level.as_str());
+    env_logger::try_init_from_env(env)?;
 
     let app_state = web::Data::new(Mutex::new(State::new()));
 
     return Ok(HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
-            .service(actix_files::Files::new("/static", "./static"))
+            .service(actix_files::Files::new("/static", "./client/public/"))
             .route("/", web::get().to(index))
             .service(buzz)
             .service(command)
@@ -287,7 +294,7 @@ async fn go() -> Result<(), Box<dyn Error>> {
             .service(blocked)
             .service(scores)
     })
-    .bind(&cfg.address)?
+    .bind(cfg.address)?
     .run()
     .await?);
 }

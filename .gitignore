@@ -1,2 +1,4 @@
 target/
 conf.json
+client/node_modules/
+client/package-lock.json

@@ -1,0 +1,3 @@
+#!/bin/fish
+
+echo "[make.fish] checking..." && npm run validate && echo "[make.fish] building..." && npm run build
