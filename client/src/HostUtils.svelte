@@ -2,62 +2,66 @@
     import { clientBuzzer, pointsWorth } from './stores';
     import { postObject } from './utils';
 
-    let pointsWorthString: string;
+    let pointValues = [200, 400, 600, 800, 1000, 1200, 1600, 2000];
+    let indexOrder = [0, 1, 2, 3, 4, 1, 3, 5, 7];
+    let outerIndex = 0;
+    $: pointsWorthIndex = indexOrder[outerIndex];
+    $: $pointsWorth = pointValues[pointsWorthIndex];
 
-    $: $pointsWorth = parseInt(pointsWorthString);
+    function incrementPointsWorth(): void {
+        outerIndex = (outerIndex  + 1) % 10;
+    }
 
     function endRound(): void {
-        // change client so response appears immediate
-        $clientBuzzer.state === "Closed";
-
         postObject("/command", {
             action: "EndRound"
         });
+        incrementPointsWorth();
     }
 
     function correct(): void {
-        console.table([$clientBuzzer.owner, $pointsWorth]);
-    
         postObject("/command", {
             action: "AddScore",
             name: $clientBuzzer.owner,
             score: $pointsWorth
         });
-
         endRound();
     }
 
     function openBuzzer(): void {
-        // change client so response appears immediate
-        $clientBuzzer.state === "Open";
-
         postObject("/command", {
             action: "OpenBuzzer"
         });
     }
+
+    document.addEventListener("keydown", function(event) {
+        if ($clientBuzzer.state === "Open" && event.key === "e") {
+            endRound();
+        } else if ($clientBuzzer.state === "Closed" && event.key === "o") {
+            openBuzzer();
+        } else if ($clientBuzzer.state === "TakenBy" && event.key === "c") {
+            correct();
+        } else if ($clientBuzzer.state === "TakenBy" && event.key === "i") {
+            openBuzzer();
+        }
+    });
 </script>
 
 <hr/>
 <span class="header">host commands</span><br/>
 
 {#if $clientBuzzer.state === "Open"}
-    <button class="large" on:mousedown={endRound}>end round early</button>
+    <button class="large" on:mousedown={endRound}><u>e</u>nd round early</button>
 {:else if $clientBuzzer.state === "Closed"}
-    this question is worth
-    <select bind:value={pointsWorthString}>
-        <option value=200>200</option>
-        <option value=400>400</option>
-        <option value=600>600</option>
-        <option value=800>800</option>
-        <option value=1000>1000</option>
-        <option value=1200>1200</option>
-        <option value=1600>1600</option>
-        <option value=2000>2000</option>
-    </select>
-    points (click to change)<br/><br/>
-    <button class="large" on:mousedown={openBuzzer}>open buzzer</button>
+    points worth:
+    <select type="number" bind:value={$pointsWorth}>
+        {#each pointValues as p}
+            <option>{p}</option>
+        {/each}
+    </select><br/>
+    <button class="large" on:mousedown={openBuzzer}><u>o</u>pen buzzer</button>
 {:else if $clientBuzzer.state === "TakenBy"}
     is <strong>{$clientBuzzer.owner}</strong>
-    <button on:mousedown={correct}>correct</button> or
-    <button on:mousedown={openBuzzer}>incorrect</button>?
+    <button on:mousedown={correct}><u>c</u>orrect</button> or
+    <button on:mousedown={openBuzzer}><u>i</u>ncorrect</button>?
 {/if}

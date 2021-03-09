@@ -1,5 +1,6 @@
 use serde::Serialize;
 use std::fmt;
+use log::debug;
 
 #[derive(Serialize, Debug)]
 pub struct Player {

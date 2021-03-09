@@ -3,13 +3,14 @@
     //     : or separate button for every points value
     //     : or add increment button
     // TODO: keyboard shortcuts for every host action
-    // TODO: POST SetScore on Enter instead of OnInput
     // TODO: answer countdown when the buzzer is open (?)
-    // TODO: click on top bar to buzz in
     // TODO: proper <input> instead of unicode checkmark ⟨☑⟩
 
-    import { clientBuzzer, clientScores, inSetup, contestants, amHost }
-        from './stores';
+    import {
+        clientBuzzer, clientScores, inSetup,
+        contestants, amHost, serverDown
+    } from './stores';
+
     import { fetchObject } from './utils';
 
     import type { Player, Buzzer } from './types';
@@ -21,16 +22,22 @@
     import Setup          from './Setup.svelte';
 
     async function updateClientBuzzer() {
+        console.log("updating buzzer");
+
         let newBuzzer: Buzzer;
     
-        await fetchObject<Buzzer>("/state/buzzer").then(res => newBuzzer = res);
+        await fetchObject<Buzzer>("/state/buzzer")
+            .then(res => { newBuzzer = res; $serverDown = false })
+            .catch(err => $serverDown = true);
 
         if (newBuzzer.state !== $clientBuzzer.state) {
-            $contestants.map(contestant =>
+            console.log(`the state changed from ${$clientBuzzer.state} to ${newBuzzer.state}`);
+            $contestants.map(contestant => {
                 fetch(`/blocked/${contestant.name}`)
                     .then(res => res.text())
-                    .then(res => contestant.blocked = (res === "!"))
-            );
+                    .then(res => contestant.blocked = (res === "!"));
+                console.log(`${contestant.name}.blocked == ${contestant.blocked}`)
+            });
             $contestants = $contestants;
             $clientBuzzer = newBuzzer;
         }
@@ -59,7 +66,7 @@
     <DisplayScores/>
 {/if}
 
-<div id="footer">v0.1.4</div>
+<div id="footer">v0.1.10</div>
 
 <style>
     #footer {

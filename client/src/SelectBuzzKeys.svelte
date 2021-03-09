@@ -5,8 +5,6 @@
 
     $: keys = $contestants.map(p => p.buzzKey);
     $: dups = keys.length !== new Set(keys).size;
-
-    $: console.table(keys);
 </script>
 
 {#if $contestants.length !== 0}
