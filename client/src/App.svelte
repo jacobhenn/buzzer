@@ -8,7 +8,7 @@
 
     import {
         clientBuzzer, clientScores, inSetup,
-        contestants, amHost, serverDown
+        contestants, amHost, serverDown, marker
     } from './stores';
 
     import { fetchObject } from './utils';
@@ -21,38 +21,40 @@
     import HostUtils      from './HostUtils.svelte';
     import Setup          from './Setup.svelte';
 
-    async function updateClientBuzzer() {
-        console.log("updating buzzer");
-
+    async function updateClientState() {
         let newBuzzer: Buzzer;
     
-        await fetchObject<Buzzer>("/state/buzzer")
-            .then(res => { newBuzzer = res; $serverDown = false })
-            .catch(err => $serverDown = true);
+        await fetchObject<Buzzer>("/state/buzzer").then(res => newBuzzer = res);
 
         if (newBuzzer.state !== $clientBuzzer.state) {
-            console.log(`the state changed from ${$clientBuzzer.state} to ${newBuzzer.state}`);
             $contestants.map(contestant => {
                 fetch(`/blocked/${contestant.name}`)
                     .then(res => res.text())
                     .then(res => contestant.blocked = (res === "!"));
-                console.log(`${contestant.name}.blocked == ${contestant.blocked}`)
             });
             $contestants = $contestants;
             $clientBuzzer = newBuzzer;
         }
 
-    }
-
-    async function updateClientScores() {
         await fetchObject<Player[]>("/state/scores")
             .then(res => $clientScores = res)
+
     }
 
-    // should be 50ms
-    setInterval(updateClientBuzzer, 100);
-    // should be 500ms
-    setInterval(updateClientScores, 500);
+    async function checkMarker() {
+        let newMarker: string;
+        await fetch("/marker")
+            .then(res => res.text())
+            .then(res => { newMarker = res; $serverDown = false })
+            .catch(err => $serverDown = true);
+
+        if (newMarker !== $marker) {
+            updateClientState();
+            $marker = newMarker;
+        }
+    }
+
+    setInterval(checkMarker, 50);
 </script>
 
 {#if $inSetup}
@@ -66,7 +68,7 @@
     <DisplayScores/>
 {/if}
 
-<div id="footer">v0.1.10</div>
+<div id="footer">v1.0.0</div>
 
 <style>
     #footer {

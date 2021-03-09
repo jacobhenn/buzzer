@@ -48,20 +48,29 @@ impl Buzzer {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// State contains a Buzzer, a list of players who have already buzzed, and a
-// list of players' scores
+// State contains a Buzzer, a list of players' scores (along with whether or not
+// they're blocked, see `scorekeeper::Player`), and a random `u8` marker which
+// is regenerated every time the state changes
 pub struct State {
     pub buzzer: Buzzer,
     pub scores: Vec<Player>,
+    pub marker: u8,
 }
 
 impl State {
-    pub const fn new() -> Self {
-        let new_scores:  Vec<Player> = Vec::new();
-
+    pub fn new() -> Self {
         Self {
             buzzer: Buzzer::Closed,
-            scores: new_scores,
+            scores: Vec::new(),
+            marker: rand::random(),
+        }
+    }
+
+    pub fn update_marker(&mut self) {
+        let old_marker = self.marker;
+        loop {
+            self.marker = rand::random();
+            if self.marker != old_marker { break; }
         }
     }
 }

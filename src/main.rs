@@ -63,6 +63,11 @@ async fn serve_index() -> HttpResponse {
         )
 }
 
+#[get("/marker")]
+async fn serve_marker(app_state: web::Data<Mutex<State>>) -> HttpResponse {
+    let state_lock = app_state.lock().unwrap();
+    HttpResponse::Ok().body((state_lock.marker as char).to_string())
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // returns the current state of the buzzer in JSON form
@@ -88,6 +93,7 @@ async fn serve_buzz(
         info!("{} has buzzed in", name);
         state_lock.scores.block(&name);
         state_lock.buzzer.take(name);
+        state_lock.update_marker();
     }
     HttpResponse::NoContent().finish()
 }
@@ -125,6 +131,7 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
         Command::AddBlocked { name } => state_lock.scores.block(&name),
         Command::CloseBuzzer => state_lock.buzzer.close(),
     };
+    state_lock.update_marker();
     HttpResponse::NoContent().finish()
 }
 
@@ -201,6 +208,7 @@ async fn go() -> Result<(), Box<dyn Error>> {
             .app_data(app_state.clone())
             .service(actix_files::Files::new("/static", "./client/public/"))
             .route("/", web::get().to(serve_index))
+            .service(serve_marker)
             .service(serve_buzz)
             .service(serve_command)
             .service(serve_state)
