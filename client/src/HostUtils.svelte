@@ -2,14 +2,35 @@
     import { clientBuzzer, pointsWorth } from './stores';
     import { postObject } from './utils';
 
-    let pointValues = [200, 400, 600, 800, 1000, 1200, 1600, 2000];
-    let indexOrder = [0, 1, 2, 3, 4, 1, 3, 5, 7];
-    let outerIndex = 0;
-    $: pointsWorthIndex = indexOrder[outerIndex];
-    $: $pointsWorth = pointValues[pointsWorthIndex];
+    const pointValues = [200, 400, 600, 800, 1000, 1200, 1600, 2000];
+    const dJIndexOrder = [1, 3, 5, 6, 7];
+    const nJIndexOrder = [0, 1, 2, 3, 4];
+    let dJIndexOrderIndex = 0;
+    let nJIndexOrderIndex = 0;
+    let inDj = false;
+
+    $: pointValuesIndex = inDj
+        ? dJIndexOrder[dJIndexOrderIndex]
+        : nJIndexOrder[nJIndexOrderIndex];
+    $: $pointsWorth = pointValues[pointValuesIndex];
+
+    $: canDecrement = inDj ? dJIndexOrderIndex > 0 : nJIndexOrderIndex > 0;
+    $: canIncrement = inDj ? dJIndexOrderIndex < 4 : nJIndexOrderIndex < 4;
 
     function incrementPointsWorth(): void {
-        outerIndex = (outerIndex  + 1) % 10;
+        if (inDj) {
+            dJIndexOrderIndex = (dJIndexOrderIndex + 1) % 5;
+        } else {
+            nJIndexOrderIndex = (nJIndexOrderIndex + 1) % 5;
+        }
+    }
+
+    function decrementPointsWorth(): void {
+        if (inDj) {
+            dJIndexOrderIndex = dJIndexOrderIndex - 1;
+        } else {
+            nJIndexOrderIndex = nJIndexOrderIndex - 1;
+        }
     }
 
     function endRound(): void {
@@ -43,6 +64,12 @@
             correct();
         } else if ($clientBuzzer.state === "TakenBy" && event.key === "i") {
             openBuzzer();
+        } else if (event.key === "d") {
+            inDj = !inDj;
+        } else if (canIncrement && event.key === "+") {
+            incrementPointsWorth();
+        } else if (canDecrement && event.key === "-") {
+            decrementPointsWorth();
         }
     });
 </script>
@@ -58,7 +85,20 @@
         {#each pointValues as p}
             <option>{p}</option>
         {/each}
-    </select><br/>
+    </select>
+
+    <button on:mousedown={incrementPointsWorth}
+            disabled={!canIncrement}><u>+</u></button>
+    <button on:mousedown={decrementPointsWorth}
+            disabled={!canDecrement}><u>-</u></button>
+
+    <br/>
+    <button on:mousedown={() => inDj = !inDj}>
+        {inDj ? "☑" : "☐"}
+        <u>d</u>ouble Jeopardy!
+    </button>
+
+    <br/>
     <button class="large" on:mousedown={openBuzzer}><u>o</u>pen buzzer</button>
 {:else if $clientBuzzer.state === "TakenBy"}
     is <strong>{$clientBuzzer.owner}</strong>

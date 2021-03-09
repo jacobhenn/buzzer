@@ -50,7 +50,8 @@ impl Buzzer {
 ////////////////////////////////////////////////////////////////////////////////
 // State contains a Buzzer, a list of players' scores (along with whether or not
 // they're blocked, see `scorekeeper::Player`), and a random `u8` marker which
-// is regenerated every time the state changes
+// is randomly regenerated every time the state changes to inform the clients
+// to perform the "pull" phase of their polling.
 pub struct State {
     pub buzzer: Buzzer,
     pub scores: Vec<Player>,

@@ -57,6 +57,8 @@ async fn serve_index() -> HttpResponse {
         )
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// returns the `u8` marker in string form. See `structs::state`
 #[get("/marker")]
 async fn serve_marker(app_state: web::Data<Mutex<State>>) -> HttpResponse {
     let state_lock = app_state.lock().unwrap();
@@ -92,6 +94,8 @@ async fn serve_buzz(
     HttpResponse::NoContent().finish()
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// takes a command and a lock on the server state and executes the command.
 fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
     info!("{}", cmd);
     match cmd {
@@ -143,7 +147,7 @@ async fn serve_command(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// handles clients posting text Commands
+// handles clients posting text Commands. See `command::Command`
 #[post("/textcommand")]
 async fn serve_text_command(
     cmd_str: String,
@@ -185,6 +189,10 @@ async fn serve_scores(app_state: web::Data<Mutex<State>>) -> HttpResponse {
 
 ////////////////////////////////////////////////////////////////////////////////
 // deserialize a Config from the conf.json file, or create one if it's missing
+// read_cfg returns a `(Config, bool)` because I have an incessant need to log
+// everything with the `log` crate. It returns `(_, true)` if it had to create
+// a default config file so it can be logged with `warn!` in `go`, since
+// this function *has* to be called before `env_logger` initiates.
 fn read_cfg() -> Result<(Config, bool), Box<dyn Error>> {
     let cfg_path = Path::new(DIR).join("conf.json");
 
@@ -205,6 +213,10 @@ async fn main() {
     go().await.unwrap_or_else(|err| error!("{}", err));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// `go` is the "real" main function. It reads the config, initiates the logger,
+// and launches the server. But if this was the `main` function, errors would be
+// printed through `Debug` instead of the more understandable `Display`.
 async fn go() -> Result<(), Box<dyn Error>> {
     let cfg_res = read_cfg();
 

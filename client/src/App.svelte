@@ -4,7 +4,7 @@
         contestants, amHost, serverDown, marker
     } from './stores';
 
-    import { fetchObject, postObject } from './utils';
+    import { fetchObject } from './utils';
 
     import type { Player, Buzzer } from './types';
 
@@ -61,7 +61,7 @@
     <DisplayScores/>
 {/if}
 
-<div id="footer">v1.0.0</div>
+<div id="footer">v1.1.0</div>
 
 <style>
     #footer {
