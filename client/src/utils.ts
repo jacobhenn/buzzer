@@ -36,5 +36,3 @@ export const buzzKeys = [
     { code: "Enter",       name: "Enter"        },
     { code: "ShiftLeft",   name: "Left Shift"   }
 ];
-
-// add thing bob

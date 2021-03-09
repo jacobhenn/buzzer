@@ -6,6 +6,8 @@ export const contestants =
 export const clientBuzzer =
     writable<Buzzer>({ state: "Closed", owner: null });
 
+export const marker       = writable<string>  ("");
+export const serverDown   = writable<boolean> (false);
 export const inSetup      = writable<boolean> (true);
 export const clientScores = writable<Player[]>([]);
 export const pointsWorth  = writable<number>  (200);

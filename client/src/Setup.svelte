@@ -1,6 +1,7 @@
 <script lang="ts">
-    import { contestants, amHost, inSetup } from './stores';
+    import { contestants, amHost, inSetup, clientScores } from './stores';
     import { postObject } from './utils';
+    import type { Contestant, Player } from './types';
 
     function addContestant(): void {
         $contestants =
@@ -17,14 +18,18 @@
     function play(): void {
         $contestants = $contestants.filter(c => !!c.name);
         $contestants.map(c =>
-            postObject("/command", {action: "AddPlayer", /* blocked: false, */ name: c.name } )
+            postObject("/command", {action: "AddPlayer", name: c.name } )
         );
         $inSetup = false;
     }
+
+    $: dup = $contestants.some((c: Contestant) =>
+        $clientScores.some((p: Player) => p.name === c.name)
+    );
 </script>
 
 contestant(s), enter your name(s)<br/>
-(hosts do not need to enter their names)
+<strong style="color:#88c0d0">hosts do not need to enter their names</strong>
 <hr/>
 
 {#each $contestants as contestant}
@@ -35,6 +40,9 @@ contestant(s), enter your name(s)<br/>
 <button on:mousedown={addContestant}>add contestant</button>
 <button on:mousedown={removeContestant}
         disabled={$contestants.length === 0}>remove contestant</button>
+{#if dup}
+    <br/><strong id="dup">some of these names are taken</strong>
+{/if}
 
 <hr/>
 does this device need host access?<br/>
@@ -44,4 +52,10 @@ does this device need host access?<br/>
 </button>
 
 <hr/>
-<button class="large" on:mousedown={play}>play</button>
+<button class="large" on:mousedown={play} disabled={dup}>play</button>
+
+<style>
+    #dup {
+        color: #bf616a;
+    }
+</style>

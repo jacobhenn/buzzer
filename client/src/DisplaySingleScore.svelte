@@ -24,13 +24,22 @@
             name: thisName,
         });
     }
+
+    function handleKeydown(event): void {
+        console.trace(event.code);
+
+        if (event.code == "Enter") {
+            updateServerScore();
+        }
+    }
 </script>
 
 {thisName}:
 {#if $amHost}
     <input class="hidden"
            bind:value={thisScoreString}
-           on:focusout={updateServerScore}/>
+           on:focusout={updateServerScore}
+           on:keydown={handleKeydown}/>
     <button class="hidden"
             on:mousedown={removePlayer}>🞬</button>
 {:else}

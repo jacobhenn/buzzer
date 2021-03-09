@@ -18,7 +18,7 @@ use actix_files;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer};
 use serde_json;
 use std::sync::Mutex;
-use log::{trace, debug, info};
+use log::{trace, debug, warn, info};
 use env_logger::Env;
 use std::error::Error;
 use std::fs;
@@ -29,11 +29,6 @@ const DIR: &str = env!("PWD");
 
 #[cfg(target_family = "windows")]
 const DIR: &str = env!("CD");
-
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-// TODO: log all scores when any change
-// TODO: add ability to parse command from String so they can be `curl`ed
 
 ////////////////////////////////////////////////////////////////////////////////
 // Full Server URI List:
@@ -63,6 +58,11 @@ async fn serve_index() -> HttpResponse {
         )
 }
 
+#[get("/marker")]
+async fn serve_marker(app_state: web::Data<Mutex<State>>) -> HttpResponse {
+    let state_lock = app_state.lock().unwrap();
+    HttpResponse::Ok().body((state_lock.marker as char).to_string())
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // returns the current state of the buzzer in JSON form
@@ -88,6 +88,7 @@ async fn serve_buzz(
         info!("{} has buzzed in", name);
         state_lock.scores.block(&name);
         state_lock.buzzer.take(name);
+        state_lock.update_marker();
     }
     HttpResponse::NoContent().finish()
 }
@@ -125,6 +126,7 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
         Command::AddBlocked { name } => state_lock.scores.block(&name),
         Command::CloseBuzzer => state_lock.buzzer.close(),
     };
+    state_lock.update_marker();
     HttpResponse::NoContent().finish()
 }
 
@@ -139,6 +141,24 @@ async fn serve_command(
     let command_inner = command.into_inner();
     let mut state_lock = app_state.lock().unwrap();
     match_command(command_inner, &mut state_lock)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// handles clients posting text Commands
+#[post("/textcommand")]
+async fn serve_text_command(
+    cmd_str: String,
+    app_state: web::Data<Mutex<State>>,
+) -> HttpResponse
+{
+    let mut state_lock = app_state.lock().unwrap();
+    match cmd_str.parse::<Command>() {
+        Ok(cmd) => match_command(cmd, &mut state_lock),
+        Err(err) => {
+            warn!(r#"couldn't parse text command "{}": {}"#, cmd_str, err);
+            HttpResponse::BadRequest().finish()
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -201,8 +221,10 @@ async fn go() -> Result<(), Box<dyn Error>> {
             .app_data(app_state.clone())
             .service(actix_files::Files::new("/static", "./client/public/"))
             .route("/", web::get().to(serve_index))
+            .service(serve_marker)
             .service(serve_buzz)
             .service(serve_command)
+            .service(serve_text_command)
             .service(serve_state)
             .service(serve_blocked)
             .service(serve_scores)

@@ -1,16 +1,10 @@
 <script lang="ts">
-    // TODO: auto-increment pointsWorth
-    //     : or separate button for every points value
-    //     : or add increment button
-    // TODO: keyboard shortcuts for every host action
-    // TODO: POST SetScore on Enter instead of OnInput
-    // TODO: answer countdown when the buzzer is open (?)
-    // TODO: click on top bar to buzz in
-    // TODO: proper <input> instead of unicode checkmark ⟨☑⟩
+    import {
+        clientBuzzer, clientScores, inSetup,
+        contestants, amHost, serverDown, marker
+    } from './stores';
 
-    import { clientBuzzer, clientScores, inSetup, contestants, amHost }
-        from './stores';
-    import { fetchObject } from './utils';
+    import { fetchObject, postObject } from './utils';
 
     import type { Player, Buzzer } from './types';
 
@@ -20,32 +14,40 @@
     import HostUtils      from './HostUtils.svelte';
     import Setup          from './Setup.svelte';
 
-    async function updateClientBuzzer() {
+    async function updateClientState() {
         let newBuzzer: Buzzer;
     
         await fetchObject<Buzzer>("/state/buzzer").then(res => newBuzzer = res);
 
         if (newBuzzer.state !== $clientBuzzer.state) {
-            $contestants.map(contestant =>
+            $contestants.map(contestant => {
                 fetch(`/blocked/${contestant.name}`)
                     .then(res => res.text())
-                    .then(res => contestant.blocked = (res === "!"))
-            );
+                    .then(res => contestant.blocked = (res === "!"));
+            });
             $contestants = $contestants;
             $clientBuzzer = newBuzzer;
         }
 
-    }
-
-    async function updateClientScores() {
         await fetchObject<Player[]>("/state/scores")
-            .then(res => $clientScores = res)
+            .then(res => $clientScores = res);
+
     }
 
-    // should be 50ms
-    setInterval(updateClientBuzzer, 100);
-    // should be 500ms
-    setInterval(updateClientScores, 500);
+    async function checkMarker() {
+        let newMarker: string;
+        await fetch("/marker")
+            .then(res => res.text())
+            .then(res => { newMarker = res; $serverDown = false })
+            .catch(err => $serverDown = true);
+
+        if (newMarker !== $marker) {
+            updateClientState();
+            $marker = newMarker;
+        }
+    }
+
+    setInterval(checkMarker, 50);
 </script>
 
 {#if $inSetup}
@@ -59,7 +61,7 @@
     <DisplayScores/>
 {/if}
 
-<div id="footer">v0.1.4</div>
+<div id="footer">v1.0.0</div>
 
 <style>
     #footer {
