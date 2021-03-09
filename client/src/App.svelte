@@ -1,17 +1,10 @@
 <script lang="ts">
-    // TODO: auto-increment pointsWorth
-    //     : or separate button for every points value
-    //     : or add increment button
-    // TODO: keyboard shortcuts for every host action
-    // TODO: answer countdown when the buzzer is open (?)
-    // TODO: proper <input> instead of unicode checkmark ⟨☑⟩
-
     import {
         clientBuzzer, clientScores, inSetup,
         contestants, amHost, serverDown, marker
     } from './stores';
 
-    import { fetchObject } from './utils';
+    import { fetchObject, postObject } from './utils';
 
     import type { Player, Buzzer } from './types';
 
@@ -37,7 +30,7 @@
         }
 
         await fetchObject<Player[]>("/state/scores")
-            .then(res => $clientScores = res)
+            .then(res => $clientScores = res);
 
     }
 
