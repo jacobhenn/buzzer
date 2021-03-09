@@ -4,7 +4,8 @@ use std::fmt;
 #[derive(Serialize, Debug)]
 pub struct Player {
     pub name: String,
-    pub score: i32,
+    pub score: u32,
+    pub blocked: bool,
 }
 
 impl fmt::Display for Player {
@@ -13,23 +14,55 @@ impl fmt::Display for Player {
     }
 }
 
-pub fn add_score(players: &mut Vec<Player>, name: &str, score: i32) {
-    players.iter_mut().for_each(|x| {
-        if x.name == *name {
-            x.score += score;
-        }
-    });
+pub trait PlayerList {
+    fn add_score (&mut self, name: &str, score: u32);
+    fn set_score (&mut self, name: &str, score: u32);
+    fn block     (&mut self, name: &str);
+    fn unblock   (&mut self, name: &str);
+
+    fn unblock_all(&mut self);
+
+    fn get_score (&self, name: &str) -> Option<u32>;
+    fn is_blocked(&self, name: &str) -> bool;
 }
 
-pub fn set_score(players: &mut Vec<Player>, name: &str, score: i32) {
-    players.iter_mut().for_each(|x| {
-        if x.name == *name {
-            x.score = score;
-        }
-    });
-}
+impl PlayerList for Vec<Player> {
+    fn add_score(&mut self, name: &str, score: u32) {
+        self.iter().position(|p| p.name == name)
+            .map(|i| self[i].score += score);
+        self.sort_by_key(|x| x.score);
+        self.reverse();
+    }
 
-pub fn sort_players(players: &mut Vec<Player>) {
-    players.sort_by_key(|x| x.score);
-    players.reverse();
+    fn set_score(&mut self, name: &str, score: u32) {
+        self.iter().position(|p| p.name == name)
+            .map(|i| self[i].score = score);
+        self.sort_by_key(|x| x.score);
+        self.reverse();
+    }
+
+    fn block(&mut self, name: &str) {
+        self.iter().position(|p| p.name == name)
+            .map(|i| self[i].blocked = true);
+    }
+
+    fn unblock(&mut self, name: &str) {
+        self.iter().position(|p| p.name == name)
+            .map(|i| self[i].blocked = false);
+    }
+
+    fn unblock_all(&mut self) {
+        for player in self {
+            player.blocked = false;
+        }
+    }
+
+    fn get_score(&self, name: &str) -> Option<u32> {
+        self.iter().position(|p| p.name == name)
+            .map(|i| self[i].score)
+    }
+
+    fn is_blocked(&self, name: &str) -> bool {
+        self.iter().any(|p| p.name == name && p.blocked)
+    }
 }

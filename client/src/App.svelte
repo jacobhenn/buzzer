@@ -1,4 +1,13 @@
 <script lang="ts">
+    // TODO: auto-increment pointsWorth
+    //     : or separate button for every points value
+    //     : or add increment button
+    // TODO: keyboard shortcuts for every host action
+    // TODO: POST SetScore on Enter instead of OnInput
+    // TODO: answer countdown when the buzzer is open (?)
+    // TODO: click on top bar to buzz in
+    // TODO: proper <input> instead of unicode checkmark ⟨☑⟩
+
     import { clientBuzzer, clientScores, inSetup, contestants, amHost }
         from './stores';
     import { fetchObject } from './utils';

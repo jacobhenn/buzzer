@@ -30,7 +30,7 @@
 {#if $amHost}
     <input class="hidden"
            bind:value={thisScoreString}
-           on:input={updateServerScore}/>
+           on:focusout={updateServerScore}/>
     <button class="hidden"
             on:mousedown={removePlayer}>🞬</button>
 {:else}
