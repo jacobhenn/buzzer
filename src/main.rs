@@ -14,11 +14,9 @@ mod structs;
 use crate::scorekeeper::{Player, PlayerList};
 use crate::command::Command;
 use crate::structs::{Config, State};
-use actix_files;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer};
-use serde_json;
 use std::sync::Mutex;
-use log::{trace, debug, warn, info};
+use log::{debug, info, warn, error};
 use env_logger::Env;
 use std::error::Error;
 use std::fs;
@@ -39,6 +37,7 @@ const DIR: &str = env!("CD");
 //     - "/buzz": contestants can POST their names to buzz in
 //     - "/command": client can POST a JSON Command to execute it
 //     - "/textcommand": client can POST a text Command to execute it
+//     - "/marker": responds with the state marker (see structs::State)
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -68,7 +67,7 @@ async fn serve_marker(app_state: web::Data<Mutex<State>>) -> HttpResponse {
 // returns the current state of the buzzer in JSON form
 #[get("/state/buzzer")]
 async fn serve_state(app_state: web::Data<Mutex<State>>) -> HttpResponse {
-    trace!("serving /state/buzzer");
+//     trace!("serving /state/buzzer");
     let state_lock = app_state.lock().unwrap();
     HttpResponse::Ok().json(&state_lock.buzzer)
 }
@@ -169,7 +168,7 @@ async fn serve_blocked(
     app_state: web::Data<Mutex<State>>,
 ) -> HttpResponse
 {
-    trace!("serving /blocked/{}", &name);
+//     trace!("serving /blocked/{}", &name);
     let state_lock = app_state.lock().unwrap();
     let res = if state_lock.scores.is_blocked(&name) { "!" } else { "" };
     HttpResponse::Ok().body(res)
@@ -179,24 +178,23 @@ async fn serve_blocked(
 // returns State.scores in JSON
 #[get("/state/scores")]
 async fn serve_scores(app_state: web::Data<Mutex<State>>) -> HttpResponse {
-    trace!("serving /state/scores");
+//     trace!("serving /state/scores");
     let state_lock = app_state.lock().unwrap();
     HttpResponse::Ok().json(&state_lock.scores)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // deserialize a Config from the conf.json file, or create one if it's missing
-fn read_cfg() -> Result<Config, Box<dyn Error>> {
+fn read_cfg() -> Result<(Config, bool), Box<dyn Error>> {
     let cfg_path = Path::new(DIR).join("conf.json");
 
     if cfg_path.is_file() {
         let cfg_str = fs::read_to_string(cfg_path)?;
-        return Ok(serde_json::from_str(&cfg_str)?);
+        Ok((serde_json::from_str(&cfg_str)?, false))
     } else {
-        println!("no conf.json found, writing default config to {:#?}", cfg_path);
-        let def: Config = Default::default();
+        let def: Config = Config::default();
         fs::write(cfg_path, serde_json::to_string(&def)?)?;
-        Ok(def)
+        Ok((def, true))
     }
 }
 
@@ -204,18 +202,33 @@ fn read_cfg() -> Result<Config, Box<dyn Error>> {
 // `main` runs `go` and pretty-prints any errors it returns
 #[actix_web::main]
 async fn main() {
-    go().await.unwrap_or_else(|err| println!("error: {}", err));
+    go().await.unwrap_or_else(|err| error!("{}", err));
 }
 
 async fn go() -> Result<(), Box<dyn Error>> {
-    let cfg = read_cfg()?;
+    let cfg_res = read_cfg();
+
+    let or_filter = match cfg_res {
+        Ok((ref cfg, _)) => cfg.log_level.as_str(),
+        Err(_) => "warn",
+    };
 
     let env = Env::default()
-        .default_filter_or(cfg.log_level.as_str());
+        .default_filter_or(or_filter);
+
     env_logger::try_init_from_env(env)?;
+
+    match cfg_res {
+        Ok((_, true)) => warn!(
+            "no conf.json found, writing default config to {:#?}",
+            Path::new(DIR).join("conf.json"),
+        ),
+        _ => (),
+    }
 
     let app_state = web::Data::new(Mutex::new(State::new()));
 
+    let address = cfg_res?.0.address;
     return Ok(HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
@@ -229,7 +242,7 @@ async fn go() -> Result<(), Box<dyn Error>> {
             .service(serve_blocked)
             .service(serve_scores)
     })
-    .bind(cfg.address)?
+    .bind(address)?
     .run()
-    .await?);
+    .await?)
 }

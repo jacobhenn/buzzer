@@ -28,27 +28,31 @@ pub trait PlayerList {
 
 impl PlayerList for Vec<Player> {
     fn add_score(&mut self, name: &str, score: u32) {
-        self.iter().position(|p| p.name == name)
-            .map(|i| self[i].score += score);
+        if let Some(i) = self.iter().position(|p| p.name == name) {
+            self[i].score += score;
+        }
         self.sort_by_key(|x| x.score);
         self.reverse();
     }
 
     fn set_score(&mut self, name: &str, score: u32) {
-        self.iter().position(|p| p.name == name)
-            .map(|i| self[i].score = score);
+        if let Some(i) = self.iter().position(|p| p.name == name) {
+            self[i].score = score;
+        }
         self.sort_by_key(|x| x.score);
         self.reverse();
     }
 
     fn block(&mut self, name: &str) {
-        self.iter().position(|p| p.name == name)
-            .map(|i| self[i].blocked = true);
+        if let Some(i) = self.iter().position(|p| p.name == name) {
+            self[i].blocked = true;
+        }
     }
 
     fn unblock(&mut self, name: &str) {
-        self.iter().position(|p| p.name == name)
-            .map(|i| self[i].blocked = false);
+        if let Some(i) = self.iter().position(|p| p.name == name) {
+            self[i].blocked = false;
+        }
     }
 
     fn unblock_all(&mut self) {

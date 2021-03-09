@@ -13,7 +13,7 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Config {
+        Self {
             log_level: LevelFilter::Warn,
             address: "127.0.0.1:8080".to_string(),
         }

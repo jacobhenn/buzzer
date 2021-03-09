@@ -2,6 +2,7 @@ use serde::Deserialize;
 use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
+use std::num::ParseIntError;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command represents an instruction by Host to change the State
@@ -47,83 +48,83 @@ impl FromStr for Command {
     type Err = ParseCmdErr;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut args = s.split(' ').map(|s| s.to_string());
+        let mut args = s.split(' ').map(std::string::ToString::to_string);
         let cmd = args.next().ok_or(ParseCmdErr::NoCmd)?;
         match cmd.to_lowercase().as_str() {
             "addscore" => {
                 let name = args.next()
-                    .ok_or(ParseCmdErr::MissingArg{index: 1})?;
+                    .ok_or(ParseCmdErr::MissingArg(1))?;
                 let score = args.next()
-                    .ok_or(ParseCmdErr::MissingArg{index: 2})?
+                    .ok_or(ParseCmdErr::MissingArg(2))?
                     .parse::<u32>()
-                    .map_err(|_| ParseCmdErr::InvalidArg{index: 2})?;
+                    .map_err(|err| ParseCmdErr::InvalidIntArg(2, err))?;
                 match args.next() {
-                    Some(_) => Err(ParseCmdErr::ExtraArg{index: 3}),
+                    Some(_) => Err(ParseCmdErr::ExtraArg(3)),
                     None => Ok(Self::AddScore{name, score}),
                 }
             },
             "setscore" => {
                 let name = args.next()
-                    .ok_or(ParseCmdErr::MissingArg{index: 1})?;
+                    .ok_or(ParseCmdErr::MissingArg(1))?;
                 let score = args.next()
-                    .ok_or(ParseCmdErr::MissingArg{index: 2})?
+                    .ok_or(ParseCmdErr::MissingArg(2))?
                     .parse::<u32>()
-                    .map_err(|_| ParseCmdErr::InvalidArg{index: 2})?;
+                    .map_err(|err| ParseCmdErr::InvalidIntArg(2, err))?;
                 match args.next() {
-                    Some(_) => Err(ParseCmdErr::ExtraArg{index: 3}),
+                    Some(_) => Err(ParseCmdErr::ExtraArg(3)),
                     None => Ok(Self::SetScore{name, score}),
                 }
             },
             "endround" => match args.next() {
-                Some(_) => Err(ParseCmdErr::ExtraArg{index: 1}),
+                Some(_) => Err(ParseCmdErr::ExtraArg(1)),
                 None => Ok(Self::EndRound),
             },
             "openbuzzer" => match args.next() {
-                Some(_) => Err(ParseCmdErr::ExtraArg{index: 1}),
+                Some(_) => Err(ParseCmdErr::ExtraArg(1)),
                 None => Ok(Self::OpenBuzzer),
             },
             "removeplayer" => {
                 let name = args.next()
-                    .ok_or(ParseCmdErr::MissingArg{index: 1})?;
+                    .ok_or(ParseCmdErr::MissingArg(1))?;
                 match args.next() {
-                    Some(_) => Err(ParseCmdErr::ExtraArg{index: 2}),
+                    Some(_) => Err(ParseCmdErr::ExtraArg(2)),
                     None => Ok(Self::RemovePlayer{name}),
                 }
             },
             "addplayer" => {
                 let name = args.next()
-                    .ok_or(ParseCmdErr::MissingArg{index: 1})?;
+                    .ok_or(ParseCmdErr::MissingArg(1))?;
                 match args.next() {
-                    Some(_) => Err(ParseCmdErr::ExtraArg{index: 2}),
+                    Some(_) => Err(ParseCmdErr::ExtraArg(2)),
                     None => Ok(Self::AddPlayer{name}),
                 }
             },
             "clearplayers" => match args.next() {
-                Some(_) => Err(ParseCmdErr::ExtraArg{index: 1}),
+                Some(_) => Err(ParseCmdErr::ExtraArg(1)),
                 None => Ok(Self::ClearPlayers),
             },
             "clearblocked" => match args.next() {
-                Some(_) => Err(ParseCmdErr::ExtraArg{index: 1}),
+                Some(_) => Err(ParseCmdErr::ExtraArg(1)),
                 None => Ok(Self::ClearBlocked),
             },
             "removeblocked" => {
                 let name = args.next()
-                    .ok_or(ParseCmdErr::MissingArg{index: 1})?;
+                    .ok_or(ParseCmdErr::MissingArg(1))?;
                 match args.next() {
-                    Some(_) => Err(ParseCmdErr::ExtraArg{index: 2}),
+                    Some(_) => Err(ParseCmdErr::ExtraArg(2)),
                     None => Ok(Self::RemoveBlocked{name}),
                 }
             },
             "addblocked" => {
                 let name = args.next()
-                    .ok_or(ParseCmdErr::MissingArg{index: 1})?;
+                    .ok_or(ParseCmdErr::MissingArg(1))?;
                 match args.next() {
-                    Some(_) => Err(ParseCmdErr::ExtraArg{index: 2}),
+                    Some(_) => Err(ParseCmdErr::ExtraArg(2)),
                     None => Ok(Self::AddBlocked{name}),
                 }
             },
             "closebuzzer" => match args.next() {
-                Some(_) => Err(ParseCmdErr::ExtraArg{index: 1}),
+                Some(_) => Err(ParseCmdErr::ExtraArg(1)),
                 None => Ok(Self::CloseBuzzer),
             },
             _ => Err(ParseCmdErr::NotACmd),
@@ -135,9 +136,9 @@ impl FromStr for Command {
 pub enum ParseCmdErr {
     NoCmd,
     NotACmd,
-    MissingArg { index: usize },
-    ExtraArg { index: usize },
-    InvalidArg { index: usize },
+    MissingArg(usize),
+    ExtraArg(usize),
+    InvalidIntArg(usize, ParseIntError),
 }
 
 impl fmt::Display for ParseCmdErr {
@@ -145,14 +146,20 @@ impl fmt::Display for ParseCmdErr {
         let err_str = match self {
             Self::NoCmd => "no command was given".to_string(),
             Self::NotACmd => "command given is not a command".to_string(),
-            Self::MissingArg{index: i} => format!("missing arg #{}", i),
-            Self::ExtraArg{index: i} => format!("extra arg at position {}", i),
-            Self::InvalidArg{index: i} => format!("invalid value for arg #{}", i),
+            Self::MissingArg(i) => format!("missing arg #{}", i),
+            Self::ExtraArg(i) => format!("extra arg at position {}", i),
+            Self::InvalidIntArg(i, err) =>
+                format!("couldn't parse arg #{}: {}", i, err),
         };
         write!(f, "{}", err_str)
     }
 }
 
 impl Error for ParseCmdErr {
-    fn source(&self) -> Option<&(dyn Error + 'static)> { None }
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::InvalidIntArg(_, source) => Some(source),
+            _ => None,
+        }
+    }
 }
