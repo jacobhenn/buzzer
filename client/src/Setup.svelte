@@ -1,13 +1,18 @@
 <script lang="ts">
     import { contestants, amHost, inSetup, clientScores } from './stores';
-    import { postObject } from './utils';
+    import { postObject, buzzKeys } from './utils';
     import type { Contestant, Player } from './types';
+
+    let buzzKeyIndex = 1;
 
     function addContestant(): void {
         $contestants =
             [...$contestants,
-             { name: "", blocked: false, buzzKey: "Space" }
+             { name: "", blocked: false, buzzKey:
+                 buzzKeys[buzzKeyIndex].code
+             }
             ];
+        buzzKeyIndex++;
     }
 
     function removeContestant(): void {
