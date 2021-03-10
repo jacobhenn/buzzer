@@ -29,10 +29,12 @@ export function containsDuplicates<T>(xs: T[]): boolean {
 }
 
 export const buzzKeys = [
-    { code: "Space",       name: "Space"        },
-    { code: "NumpadEnter", name: "Numpad Enter" },
-    { code: "Numpad0",     name: "Numpad 0"     },
-    { code: "ShiftRight",  name: "Right Shift"  },
-    { code: "Enter",       name: "Enter"        },
-    { code: "ShiftLeft",   name: "Left Shift"   }
+    { code: "Space",        name: "Space"        },
+    { code: "NumpadEnter",  name: "Numpad Enter" },
+    { code: "Numpad0",      name: "Numpad 0"     },
+    { code: "ShiftRight",   name: "Right Shift"  },
+    { code: "Enter",        name: "Enter"        },
+    { code: "ShiftLeft",    name: "Left Shift"   },
+    { code: "ControlLeft",  name: "Left Control" },
+    { code: "ControlRight", name: "Right Control"}
 ];
