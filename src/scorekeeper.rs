@@ -4,7 +4,7 @@ use std::fmt;
 #[derive(Serialize, Debug)]
 pub struct Player {
     pub name: String,
-    pub score: u32,
+    pub score: i32,
     pub blocked: bool,
 }
 
@@ -15,19 +15,19 @@ impl fmt::Display for Player {
 }
 
 pub trait PlayerList {
-    fn add_score (&mut self, name: &str, score: u32);
-    fn set_score (&mut self, name: &str, score: u32);
+    fn add_score (&mut self, name: &str, score: i32);
+    fn set_score (&mut self, name: &str, score: i32);
     fn block     (&mut self, name: &str);
     fn unblock   (&mut self, name: &str);
 
     fn unblock_all(&mut self);
 
-    fn get_score (&self, name: &str) -> Option<u32>;
+    fn get_score (&self, name: &str) -> Option<i32>;
     fn is_blocked(&self, name: &str) -> bool;
 }
 
 impl PlayerList for Vec<Player> {
-    fn add_score(&mut self, name: &str, score: u32) {
+    fn add_score(&mut self, name: &str, score: i32) {
         if let Some(i) = self.iter().position(|p| p.name == name) {
             self[i].score += score;
         }
@@ -35,7 +35,7 @@ impl PlayerList for Vec<Player> {
         self.reverse();
     }
 
-    fn set_score(&mut self, name: &str, score: u32) {
+    fn set_score(&mut self, name: &str, score: i32) {
         if let Some(i) = self.iter().position(|p| p.name == name) {
             self[i].score = score;
         }
@@ -61,9 +61,8 @@ impl PlayerList for Vec<Player> {
         }
     }
 
-    fn get_score(&self, name: &str) -> Option<u32> {
-        self.iter().position(|p| p.name == name)
-            .map(|i| self[i].score)
+    fn get_score(&self, name: &str) -> Option<i32> {
+        self.iter().find(|p| p.name == name).map(|i| i.score)
     }
 
     fn is_blocked(&self, name: &str) -> bool {

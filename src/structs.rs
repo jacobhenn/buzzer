@@ -48,22 +48,42 @@ impl Buzzer {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+#[derive(Serialize, Debug)]
+pub struct HistEntry {
+    pub name: String,
+    pub score: i32,
+}
+
+pub trait History {
+    fn log(&mut self, name: String, score: i32);
+}
+
+impl History for Vec<HistEntry> {
+    fn log(&mut self, name: String, score: i32) {
+        // if self.length == 255 { self.pop(); }
+        self.insert(0, HistEntry{name, score});
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // State contains a Buzzer, a list of players' scores (along with whether or not
 // they're blocked, see `scorekeeper::Player`), and a random `u8` marker which
 // is randomly regenerated every time the state changes to inform the clients
 // to perform the "pull" phase of their polling.
 pub struct State {
-    pub buzzer: Buzzer,
-    pub scores: Vec<Player>,
-    pub marker: u8,
+    pub buzzer:  Buzzer,
+    pub scores:  Vec<Player>,
+    pub history: Vec<HistEntry>,
+    pub marker:  u8,
 }
 
 impl State {
     pub fn new() -> Self {
         Self {
-            buzzer: Buzzer::Closed,
-            scores: Vec::new(),
-            marker: rand::random(),
+            buzzer:  Buzzer::Closed,
+            scores:  Vec::new(),
+            history: Vec::new(),
+            marker:  rand::random(),
         }
     }
 

@@ -13,7 +13,7 @@ mod structs;
 
 use crate::scorekeeper::{Player, PlayerList};
 use crate::command::Command;
-use crate::structs::{Config, State};
+use crate::structs::{Config, State, History};
 use actix_web::{get, post, web, App, HttpResponse, HttpServer};
 use std::sync::Mutex;
 use log::{debug, info, warn, error};
@@ -34,6 +34,7 @@ const DIR: &str = env!("CD");
 //     - "/state/buzzer": responds with Buzzer in JSON form to GET
 //     - "/blocked/{name}": nonempty GET response if {name} is blocked
 //     - "/state/scores": provides JSON list of scores
+//     - "/state/history": provides editable list of changes to scores
 //     - "/buzz": contestants can POST their names to buzz in
 //     - "/command": client can POST a JSON Command to execute it
 //     - "/textcommand": client can POST a text Command to execute it
@@ -99,36 +100,62 @@ async fn serve_buzz(
 fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
     info!("{}", cmd);
     match cmd {
-        Command::AddScore { name, score } => {
+        Command::AddScore{name, score} => {
             state_lock.scores.add_score(&name, score);
-            info!(
-                "    ({}'s score is now {})",
-                name,
-                state_lock.scores.get_score(&name).unwrap_or_default(),
-            );
+            let new_score = state_lock.scores
+                .get_score(&name).unwrap_or_default();
+            state_lock.history.log(name, new_score);
         },
-        Command::SetScore { name, score } =>
-            state_lock.scores.set_score(&name, score),
+        Command::SetScore{name, score} => {
+            state_lock.scores.set_score(&name, score);
+            state_lock.history.log(name, score);
+        },
         Command::EndRound => {
             state_lock.scores.unblock_all();
             state_lock.buzzer.close();
         },
         Command::OpenBuzzer => state_lock.buzzer.open(),
-        Command::AddPlayer { name } =>
+        Command::AddPlayer { name } => {
+            let score = state_lock.history.iter()
+                .find(|e| e.name == name).map(|e| e.score).unwrap_or_default();
             if !state_lock.scores.iter().any(|p| p.name == name) {
                 state_lock.scores.push(
-                    Player { name, score: 0, blocked: false }
+                    Player{name: name.clone(), score: score, blocked: false}
                 );
-            },
-        Command::RemovePlayer { name } =>
+                state_lock.history.log(name, score);
+            };
+        },
+        Command::RemovePlayer{name} =>
             state_lock.scores.retain(|x| x.name != name),
         Command::ClearPlayers => state_lock.scores.clear(),
         Command::ClearBlocked => state_lock.scores.unblock_all(),
-        Command::RemoveBlocked { name } =>
+        Command::RemoveBlocked{name} =>
             state_lock.scores.unblock(&name),
-        Command::AddBlocked { name } => state_lock.scores.block(&name),
+        Command::AddBlocked{name} => state_lock.scores.block(&name),
         Command::CloseBuzzer => state_lock.buzzer.close(),
+        Command::EditHistory{index: i, score} =>
+            if let Some(e) = state_lock.history.get(i) {
+                let diff: i32 = score - e.score;
+                state_lock.scores.add_score(&e.name, diff);
+                let name = e.name.clone();
+                state_lock.history.iter_mut()
+                    .take(i+1).filter(|x| x.name == name)
+                    .for_each(|x| x.score += diff);
+            },
+        Command::RemoveHistory{index: i} => {
+            if let Some(e) = state_lock.history.get(i) {
+                state_lock.scores.add_score(&e.name, -e.score);
+                let name = e.name.clone();
+                let score = e.score;
+                state_lock.history.remove(i);
+                state_lock.history.iter_mut()
+                    .take(i).filter(|x| x.name == name)
+                    .for_each(|x| x.score -= score);
+            }
+        },
+        Command::ClearHistory => state_lock.history.clear(),
     };
+    debug!("{:?}", state_lock.history);
     state_lock.update_marker();
     HttpResponse::NoContent().finish()
 }
@@ -172,7 +199,6 @@ async fn serve_blocked(
     app_state: web::Data<Mutex<State>>,
 ) -> HttpResponse
 {
-//     trace!("serving /blocked/{}", &name);
     let state_lock = app_state.lock().unwrap();
     let res = if state_lock.scores.is_blocked(&name) { "!" } else { "" };
     HttpResponse::Ok().body(res)
@@ -182,9 +208,16 @@ async fn serve_blocked(
 // returns State.scores in JSON
 #[get("/state/scores")]
 async fn serve_scores(app_state: web::Data<Mutex<State>>) -> HttpResponse {
-//     trace!("serving /state/scores");
     let state_lock = app_state.lock().unwrap();
     HttpResponse::Ok().json(&state_lock.scores)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// returns State.history in JSON
+#[get("/state/history")]
+async fn serve_history(app_state: web::Data<Mutex<State>>) -> HttpResponse {
+    let state_lock = app_state.lock().unwrap();
+    HttpResponse::Ok().json(&state_lock.history)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,6 +286,7 @@ async fn go() -> Result<(), Box<dyn Error>> {
             .service(serve_state)
             .service(serve_blocked)
             .service(serve_scores)
+            .service(serve_history)
     })
     .bind(address)?
     .run()

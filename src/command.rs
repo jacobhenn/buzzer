@@ -10,8 +10,8 @@ use std::num::ParseIntError;
 #[derive(Deserialize, Debug)]
 #[serde(tag = "action")]
 pub enum Command {
-    AddScore { name: String, score: u32 },
-    SetScore { name: String, score: u32 },
+    AddScore { name: String, score: i32 },
+    SetScore { name: String, score: i32 },
     EndRound,
     OpenBuzzer,
     RemovePlayer { name: String },
@@ -21,6 +21,9 @@ pub enum Command {
     RemoveBlocked { name: String },
     AddBlocked { name: String },
     CloseBuzzer,
+    EditHistory { index: usize, score: i32 },
+    RemoveHistory { index: usize },
+    ClearHistory,
 }
 
 impl fmt::Display for Command {
@@ -39,6 +42,11 @@ impl fmt::Display for Command {
             Self::RemoveBlocked{name} => format!("unblocking {}", name),
             Self::AddBlocked{name} => format!("blocking {} from buzzing", name),
             Self::CloseBuzzer => "closing buzzer".to_string(),
+            Self::EditHistory{index, score: _} =>
+                format!("changing history entry #{}", index+1),
+            Self::RemoveHistory{index} =>
+                format!("removing history entry #{}", index+1),
+            Self::ClearHistory => "clearing history".to_string(),
         };
         write!(f, "{}", cmd_str)
     }
@@ -56,7 +64,7 @@ impl FromStr for Command {
                     .ok_or(ParseCmdErr::MissingArg(1))?;
                 let score = args.next()
                     .ok_or(ParseCmdErr::MissingArg(2))?
-                    .parse::<u32>()
+                    .parse::<i32>()
                     .map_err(|err| ParseCmdErr::InvalidIntArg(2, err))?;
                 match args.next() {
                     Some(_) => Err(ParseCmdErr::ExtraArg(3)),
@@ -68,7 +76,7 @@ impl FromStr for Command {
                     .ok_or(ParseCmdErr::MissingArg(1))?;
                 let score = args.next()
                     .ok_or(ParseCmdErr::MissingArg(2))?
-                    .parse::<u32>()
+                    .parse::<i32>()
                     .map_err(|err| ParseCmdErr::InvalidIntArg(2, err))?;
                 match args.next() {
                     Some(_) => Err(ParseCmdErr::ExtraArg(3)),
@@ -127,6 +135,34 @@ impl FromStr for Command {
                 Some(_) => Err(ParseCmdErr::ExtraArg(1)),
                 None => Ok(Self::CloseBuzzer),
             },
+            "edithistory" => {
+                let index = args.next()
+                    .ok_or(ParseCmdErr::MissingArg(1))?
+                    .parse::<usize>()
+                    .map_err(|err| ParseCmdErr::InvalidIntArg(1, err))?;
+                let score = args.next()
+                    .ok_or(ParseCmdErr::MissingArg(2))?
+                    .parse::<i32>()
+                    .map_err(|err| ParseCmdErr::InvalidIntArg(2, err))?;
+                match args.next() {
+                    Some(_) => Err(ParseCmdErr::ExtraArg(3)),
+                    None => Ok(Self::EditHistory{index, score}),
+                }
+            }
+            "removehistory" => {
+                let index = args.next()
+                    .ok_or(ParseCmdErr::MissingArg(1))?
+                    .parse::<usize>()
+                    .map_err(|err| ParseCmdErr::InvalidIntArg(1, err))?;
+                match args.next() {
+                    Some(_) => Err(ParseCmdErr::ExtraArg(2)),
+                    None => Ok(Self::RemoveHistory{index}),
+                }
+            }
+            "clearhistory" => match args.next() {
+                Some(_) => Err(ParseCmdErr::ExtraArg(1)),
+                None => Ok(Self::ClearHistory),
+            }
             _ => Err(ParseCmdErr::NotACmd),
         }
     }
