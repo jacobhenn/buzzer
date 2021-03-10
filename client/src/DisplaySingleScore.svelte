@@ -38,7 +38,7 @@
            bind:value={thisScoreString}
            on:focusout={updateServerScore}
            on:keydown={handleKeydown}/>
-    <button class="hidden"
+    <button class="x"
             on:mousedown={removePlayer}>🞬</button>
 {:else}
     {thisScore}

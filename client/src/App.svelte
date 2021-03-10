@@ -1,13 +1,14 @@
 <script lang="ts">
     import {
-        clientBuzzer, clientScores, inSetup,
-        contestants, amHost, serverDown, marker
+        clientBuzzer, clientScores, inSetup, clientHistory,
+        contestants, amHost, serverDown, marker, inHistory
     } from './stores';
 
     import { fetchObject } from './utils';
 
-    import type { Player, Buzzer } from './types';
+    import type { Player, Buzzer, HistEntry } from './types';
 
+    import DisplayHistory from './DisplayHistory.svelte';
     import SelectBuzzKeys from './SelectBuzzKeys.svelte';
     import DisplayBuzzer  from './DisplayBuzzer.svelte';
     import DisplayScores  from './DisplayScores.svelte';
@@ -32,6 +33,8 @@
         await fetchObject<Player[]>("/state/scores")
             .then(res => $clientScores = res);
 
+        await fetchObject<HistEntry[]>("/state/history")
+            .then(res => $clientHistory = res);
     }
 
     async function checkMarker() {
@@ -58,10 +61,14 @@
     {#if $amHost}
         <HostUtils/>
     {/if}
-    <DisplayScores/>
+    {#if $inHistory}
+        <DisplayHistory/>
+    {:else}
+        <DisplayScores/>
+    {/if}
 {/if}
 
-<div id="footer">v1.1.2</div>
+<div id="footer">v1.2.0</div>
 
 <style>
     #footer {

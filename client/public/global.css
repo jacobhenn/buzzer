@@ -52,7 +52,11 @@ button {
     color: #2e3440;
     margin: 0px;
 } button.hidden:hover {
+    color: #eceff4;
+} button.x {
     color: #bf616a;
+    background-color: #2e3440;
+    margin: 0px;
 }
 
 input {
