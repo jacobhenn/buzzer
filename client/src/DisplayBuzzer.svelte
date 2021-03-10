@@ -1,5 +1,4 @@
 <script lang="ts">
-    // fix
     import { contestants, clientBuzzer, serverDown } from './stores';
     import { buzz } from './utils'
 
@@ -22,7 +21,7 @@
         buzzerText = `${$clientBuzzer.owner} has buzzed in`;
     }
 
-    function handleClick(event): void {
+    function handleClick(): void {
         let c = $contestants[0];
         if ($clientBuzzer.state == "Open" && !c.blocked) {
             buzz(c.name);

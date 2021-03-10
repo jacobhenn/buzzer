@@ -25,10 +25,8 @@
         });
     }
 
-    function handleKeydown(event): void {
-        console.trace(event.code);
-
-        if (event.code == "Enter") {
+    function handleKeydown(e: { code: string }): void {
+        if (e.code == "Enter") {
             updateServerScore();
         }
     }

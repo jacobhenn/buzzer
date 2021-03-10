@@ -39,7 +39,7 @@
         await fetch("/marker")
             .then(res => res.text())
             .then(res => { newMarker = res; $serverDown = false })
-            .catch(err => $serverDown = true);
+            .catch(() => $serverDown = true);
 
         if (newMarker !== $marker) {
             updateClientState();
@@ -61,7 +61,7 @@
     <DisplayScores/>
 {/if}
 
-<div id="footer">v1.1.0</div>
+<div id="footer">v1.1.2</div>
 
 <style>
     #footer {
