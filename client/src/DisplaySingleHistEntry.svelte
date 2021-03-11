@@ -31,6 +31,9 @@
     }
 </script>
 
+<span class="time">
+    {$clientHistory[thisIndex].time[0].toString().padStart(2, "0")}:{$clientHistory[thisIndex].time[1].toString().padStart(2, "0")}
+</span>
 {$clientHistory[thisIndex].name}:
 {#if $amHost}
     <input class="hidden"
@@ -42,3 +45,9 @@
 {:else}
     {thisScore}
 {/if}
+
+<style>
+    span.time {
+        color: #4c566a;
+    }
+</style>

@@ -3,13 +3,13 @@
 * {
     color: #eceff4;
     font-family: 'Fira Code', monospace;
-    font-size: calc(10px + 2vw);
+    font-size: 2.5vw;
 }
 
 body {
     color: #eceff4;
     font-family: 'Fira Code', monospace;
-    font-size: calc(10px + 2vw);
+    font-size: 2.5vw;
 
     background-color: #2e3440;
     margin: 0px;

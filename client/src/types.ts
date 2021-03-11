@@ -4,4 +4,4 @@ export type Buzzer = { state: string; owner: string | null; };
 
 export type Player = { name: string; score: number; };
 
-export type HistEntry = { name: string; score: number; };
+export type HistEntry = { time: number[]; name: string; score: number; };

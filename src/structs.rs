@@ -2,6 +2,7 @@ use crate::scorekeeper::Player;
 
 use serde::{Serialize, Deserialize};
 use log::LevelFilter;
+use chrono::{Local, Timelike};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Config represents the values expected to be present in conf.json
@@ -50,6 +51,7 @@ impl Buzzer {
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Serialize, Debug)]
 pub struct HistEntry {
+    pub time: (u8, u8), // HH:MM
     pub name: String,
     pub score: i32,
 }
@@ -60,8 +62,13 @@ pub trait History {
 
 impl History for Vec<HistEntry> {
     fn log(&mut self, name: String, score: i32) {
-        // if self.length == 255 { self.pop(); }
-        self.insert(0, HistEntry{name, score});
+        if let Some(e) = self.get(0) {
+            if e.name == name && e.score == score { return; }
+        }
+
+        let now = Local::now().time();
+        let time = (now.hour() as u8, now.minute() as u8);
+        self.insert(0, HistEntry{time, name, score});
     }
 }
 
