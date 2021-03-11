@@ -18,8 +18,8 @@ pub enum Command {
     AddPlayer { name: String },
     ClearPlayers,
     ClearBlocked,
-    RemoveBlocked { name: String },
-    AddBlocked { name: String },
+    Block { name: String },
+    Unblock { name: String },
     CloseBuzzer,
     EditHistory { index: usize, score: i32 },
     RemoveHistory { index: usize },
@@ -39,8 +39,8 @@ impl fmt::Display for Command {
             Self::AddPlayer{name} => format!("adding {}", name),
             Self::ClearPlayers => "removing all players".to_string(),
             Self::ClearBlocked => "unblocking all players".to_string(),
-            Self::RemoveBlocked{name} => format!("unblocking {}", name),
-            Self::AddBlocked{name} => format!("blocking {} from buzzing", name),
+            Self::Block{name} => format!("blocking {} from buzzing", name),
+            Self::Unblock{name} => format!("unblocking {}", name),
             Self::CloseBuzzer => "closing buzzer".to_string(),
             Self::EditHistory{index, score: _} =>
                 format!("changing history entry #{}", index+1),
@@ -115,20 +115,20 @@ impl FromStr for Command {
                 Some(_) => Err(ParseCmdErr::ExtraArg(1)),
                 None => Ok(Self::ClearBlocked),
             },
-            "removeblocked" => {
+            "block" => {
                 let name = args.next()
                     .ok_or(ParseCmdErr::MissingArg(1))?;
                 match args.next() {
                     Some(_) => Err(ParseCmdErr::ExtraArg(2)),
-                    None => Ok(Self::RemoveBlocked{name}),
+                    None => Ok(Self::Block{name}),
                 }
             },
-            "addblocked" => {
+            "unblock" => {
                 let name = args.next()
                     .ok_or(ParseCmdErr::MissingArg(1))?;
                 match args.next() {
                     Some(_) => Err(ParseCmdErr::ExtraArg(2)),
-                    None => Ok(Self::AddBlocked{name}),
+                    None => Ok(Self::Unblock{name}),
                 }
             },
             "closebuzzer" => match args.next() {

@@ -1,8 +1,7 @@
-use crate::scorekeeper::Player;
-
 use serde::{Serialize, Deserialize};
-use log::LevelFilter;
+use log::{info, LevelFilter};
 use chrono::{Local, Timelike};
+use std::collections::HashMap;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Config represents the values expected to be present in conf.json
@@ -43,8 +42,9 @@ impl Buzzer {
 
     pub fn take(&mut self, name: String) {
         if *self == Self::Open {
+            info!("{} has buzzed in", name);
             *self = Self::TakenBy{owner: name};
-        }
+        } else { info!("{} tried to buzz in but the buzzer wasn't open", name) }
     }
 }
 
@@ -73,13 +73,26 @@ impl History for Vec<HistEntry> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+pub struct Player {
+    // pub name: String,
+    pub score: i32,
+    pub blocked: bool,
+}
+
+#[derive(Serialize, Debug)]
+pub struct NamedPlayer {
+    pub name: String,
+    pub score: i32,
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // State contains a Buzzer, a list of players' scores (along with whether or not
 // they're blocked, see `scorekeeper::Player`), and a random `u8` marker which
 // is randomly regenerated every time the state changes to inform the clients
 // to perform the "pull" phase of their polling.
 pub struct State {
     pub buzzer:  Buzzer,
-    pub scores:  Vec<Player>,
+    pub scores:  HashMap<String, Player>,
     pub history: Vec<HistEntry>,
     pub marker:  u8,
 }
@@ -88,7 +101,7 @@ impl State {
     pub fn new() -> Self {
         Self {
             buzzer:  Buzzer::Closed,
-            scores:  Vec::new(),
+            scores:  HashMap::new(),
             history: Vec::new(),
             marker:  rand::random(),
         }
