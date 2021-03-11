@@ -34,6 +34,7 @@ button {
     color: #eceff4;
     margin: 5px;
     padding: 5px;
+    transition: color 0.1s, background-color 0.1s;
 } button.large {
     margin: 10px;
     padding: 17px;
@@ -66,6 +67,7 @@ input {
     color: #eceff4;
     margin: 5px;
     padding: 5px;
+    transition: color 0.1s, background-color 0.1s;
 } input.large {
     margin: 10px;
     padding: 14px;
@@ -97,6 +99,7 @@ select {
     text-overflow: '';
     margin: 5px;
     padding: 5px;
+    transition: color 0.1s, background-color 0.1s;
 } select:hover {
     background-color: #4c566a;
     cursor: pointer;

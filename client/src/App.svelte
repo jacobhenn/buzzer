@@ -68,7 +68,7 @@
     {/if}
 {/if}
 
-<div id="footer">v1.2.0</div>
+<div id="footer">v1.3.1</div>
 
 <style>
     #footer {

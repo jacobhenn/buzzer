@@ -56,7 +56,9 @@
     }
 
     document.addEventListener("keydown", function(event) {
-        if ($clientBuzzer.state === "Open" && event.key === "e") {
+        if (document.activeElement.nodeName === "INPUT") {
+            return;
+        } else if ($clientBuzzer.state === "Open" && event.key === "e") {
             endRound();
         } else if ($clientBuzzer.state === "Closed" && event.key === "o") {
             openBuzzer();
