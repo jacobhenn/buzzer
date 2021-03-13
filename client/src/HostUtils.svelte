@@ -2,35 +2,22 @@
     import { clientBuzzer, pointsWorth } from './stores';
     import { postObject } from './utils';
 
-    const pointValues = [200, 400, 600, 800, 1000, 1200, 1600, 2000];
-    const dJIndexOrder = [1, 3, 5, 6, 7];
-    const nJIndexOrder = [0, 1, 2, 3, 4];
-    let dJIndexOrderIndex = 0;
-    let nJIndexOrderIndex = 0;
+    const nJPointValues = [200, 400, 600,  800,  1000]
+    const dJPointValues = [400, 800, 1200, 1600, 2000]
+    let pointValuesIndex = 0;
     let inDj = false;
 
-    $: pointValuesIndex = inDj
-        ? dJIndexOrder[dJIndexOrderIndex]
-        : nJIndexOrder[nJIndexOrderIndex];
-    $: $pointsWorth = pointValues[pointValuesIndex];
-
-    $: canDecrement = inDj ? dJIndexOrderIndex > 0 : nJIndexOrderIndex > 0;
-    $: canIncrement = inDj ? dJIndexOrderIndex < 4 : nJIndexOrderIndex < 4;
+    $: $pointsWorth = inDj
+        ? dJPointValues[pointValuesIndex]
+        : nJPointValues[pointValuesIndex];
 
     function incrementPointsWorth(): void {
-        if (inDj) {
-            dJIndexOrderIndex = (dJIndexOrderIndex + 1) % 5;
-        } else {
-            nJIndexOrderIndex = (nJIndexOrderIndex + 1) % 5;
-        }
+        pointValuesIndex++;
+        pointValuesIndex %= 5;
     }
 
     function decrementPointsWorth(): void {
-        if (inDj) {
-            dJIndexOrderIndex = dJIndexOrderIndex - 1;
-        } else {
-            nJIndexOrderIndex = nJIndexOrderIndex - 1;
-        }
+        pointValuesIndex--;
     }
 
     function endRound(): void {
@@ -68,9 +55,9 @@
             openBuzzer();
         } else if (event.key === "d") {
             inDj = !inDj;
-        } else if (canIncrement && event.key === "+") {
+        } else if (pointValuesIndex < 4 && event.key === "+") {
             incrementPointsWorth();
-        } else if (canDecrement && event.key === "-") {
+        } else if (pointValuesIndex > 0 && event.key === "-") {
             decrementPointsWorth();
         }
     });
@@ -84,15 +71,15 @@
 {:else if $clientBuzzer.state === "Closed"}
     points worth:
     <select type="number" bind:value={$pointsWorth}>
-        {#each pointValues as p}
+        {#each (inDj ? dJPointValues : nJPointValues) as p}
             <option>{p}</option>
         {/each}
     </select>
 
     <button on:mousedown={incrementPointsWorth}
-            disabled={!canIncrement}><u>+</u></button>
+            disabled={pointValuesIndex > 3}><u>+</u></button>
     <button on:mousedown={decrementPointsWorth}
-            disabled={!canDecrement}><u>-</u></button>
+            disabled={pointValuesIndex < 1}><u>-</u></button>
 
     <br/>
     <button on:mousedown={() => inDj = !inDj}>

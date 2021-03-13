@@ -11,6 +11,6 @@ export const inHistory     = writable<boolean>    (false);
 export const serverDown    = writable<boolean>    (false);
 export const inSetup       = writable<boolean>    (true);
 export const pointsWorth   = writable<number>     (200);
-export const marker        = writable<string>     ("");
+export const marker        = writable<number>     (0);
 export const clientHistory = writable<HistEntry[]>([]);
 export const clientScores  = writable<Player[]>   ([]);

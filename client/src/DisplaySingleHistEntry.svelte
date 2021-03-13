@@ -4,8 +4,6 @@
 
     export let thisIndex: number;
 
-    console.log(`displaying history entry #${thisIndex}`);
-
     $: thisScore = $clientHistory[thisIndex].score;
     $: thisScoreString = thisScore.toString();
 
@@ -18,10 +16,14 @@
     }
 
     function removeHistEntry(): void {
+        // remove the entry immediately on the client side to appear seamless
+        delete $clientHistory[thisIndex];
+        $clientHistory = $clientHistory;
+
         postObject("/command", {
             action: "RemoveHistory",
             index: thisIndex
-        })
+        });
     }
 
     function handleKeydown(event: { code: string }): void {
@@ -40,8 +42,12 @@
            bind:value={thisScoreString}
            on:blur={updateServerHistEntry}
            on:keydown={handleKeydown}/>
-    <button class="x"
-            on:mousedown={removeHistEntry}>🞬</button>
+    {#if $clientHistory[thisIndex].score !== 0}
+        <button class="x"
+                on:mousedown={removeHistEntry}>🞬</button>
+    {:else}
+        <button class="x" disabled> </button>
+    {/if}
 {:else}
     {thisScore}
 {/if}

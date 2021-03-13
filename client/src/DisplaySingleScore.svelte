@@ -17,7 +17,7 @@
 
     function removePlayer(): void {
         // immediately remove from client so change appears immediate
-        $clientScores = $clientScores.filter(s => s.name !== thisName)
+        delete $clientScores[thisName];
     
         postObject("/command", {
             action: "RemovePlayer",
@@ -25,7 +25,7 @@
         });
     }
 
-    function handleKeydown(e: { code: string }): void {
+    function handleKeydown(e: KeyboardEvent): void {
         if (e.code == "Enter") {
             updateServerScore();
         }

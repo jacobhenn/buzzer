@@ -74,7 +74,7 @@ input {
 } input.hidden {
     border: 3px solid #2e3440;
     background-color: #2e3440;
-    max-width: 10vw;
+    max-width: 8vw;
     padding: 0px;
     margin: 0px;
 } input:hover {

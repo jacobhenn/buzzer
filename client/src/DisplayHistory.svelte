@@ -24,7 +24,7 @@
 <button on:click={() => $inHistory = false}>
     ← <u>b</u>ack to current scores
 </button><br/>
-<input bind:value={nameFilter} placeholder="filter player name"><br/>
+<input bind:value={nameFilter} placeholder="filter by player name"><br/>
 
 <div style="text-align:right;display:inline-block">
 {#each range(0, $clientHistory.length-1) as i}

@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize};
-use log::{info, LevelFilter};
+use log::LevelFilter;
 use chrono::{Local, Timelike};
 use std::collections::HashMap;
 
@@ -41,10 +41,7 @@ impl Buzzer {
     }
 
     pub fn take(&mut self, name: String) {
-        if *self == Self::Open {
-            info!("{} has buzzed in", name);
-            *self = Self::TakenBy{owner: name};
-        } else { info!("{} tried to buzz in but the buzzer wasn't open", name) }
+        *self = Self::TakenBy{owner: name};
     }
 }
 
@@ -62,10 +59,7 @@ pub trait History {
 
 impl History for Vec<HistEntry> {
     fn log(&mut self, name: String, score: i32) {
-        if let Some(e) = self.get(0) {
-            if e.name == name && e.score == score { return; }
-        }
-
+        if self.iter().any(|e| e.name == name && e.score == score) { return; }
         let now = Local::now().time();
         let time = (now.hour() as u8, now.minute() as u8);
         self.insert(0, HistEntry{time, name, score});
@@ -73,16 +67,10 @@ impl History for Vec<HistEntry> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+#[derive(Serialize)]
 pub struct Player {
-    // pub name: String,
     pub score: i32,
     pub blocked: bool,
-}
-
-#[derive(Serialize, Debug)]
-pub struct NamedPlayer {
-    pub name: String,
-    pub score: i32,
 }
 
 ////////////////////////////////////////////////////////////////////////////////

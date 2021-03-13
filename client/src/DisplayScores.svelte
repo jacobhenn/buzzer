@@ -21,7 +21,8 @@
 <br/>
 
 <div style="text-align:right;display:inline-block">
-{#each $clientScores as player (player.name)}
-    <DisplaySingleScore thisName={player.name} thisScore={player.score}/>
+{#each Object.entries($clientScores).sort((a, b) => a[1].score - b[1].score).reverse()
+    as player (player[0])}
+    <DisplaySingleScore thisName={player[0]} thisScore={player[1].score}/>
 {/each}
 </div>

@@ -3,6 +3,7 @@ use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 use std::num::ParseIntError;
+use std::string::ToString;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command represents an instruction by Host to change the State
@@ -56,7 +57,7 @@ impl FromStr for Command {
     type Err = ParseCmdErr;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut args = s.split(' ').map(std::string::ToString::to_string);
+        let mut args = s.split(' ').map(ToString::to_string);
         let cmd = args.next().ok_or(ParseCmdErr::NoCmd)?;
         match cmd.to_lowercase().as_str() {
             "addscore" => {

@@ -11,7 +11,7 @@ mod command;
 mod structs;
 
 use crate::command::Command;
-use crate::structs::{Config, State, History, Player, NamedPlayer};
+use crate::structs::{Config, State, History, Player, Buzzer};
 use actix_web::{get, post, web, App, HttpResponse, HttpServer};
 use std::sync::Mutex;
 use log::{trace, debug, info, warn, error};
@@ -30,7 +30,6 @@ const DIR: &str = env!("CD");
 // Full Server URI List:
 //     - "/": serves the svelte app
 //     - "/state/buzzer": responds with Buzzer in JSON form to GET
-//     - "/blocked/{name}": nonempty GET response if {name} is blocked
 //     - "/state/scores": provides JSON list of scores
 //     - "/state/history": provides editable list of changes to scores
 //     - "/buzz": contestants can POST their names to buzz in
@@ -57,11 +56,12 @@ async fn serve_index() -> HttpResponse {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// returns the `u8` marker in string form. See `structs::state`
+// returns the `u8` marker
 #[get("/marker")]
 async fn serve_marker(app_state: web::Data<Mutex<State>>) -> HttpResponse {
     let state_lock = app_state.lock().unwrap();
-    HttpResponse::Ok().body(state_lock.marker.to_string())
+    HttpResponse::Ok().content_type("application/octet-stream")
+        .body(Vec::from([state_lock.marker]))
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,8 +86,11 @@ async fn serve_buzz(
         Some(true) => debug!("{} tried to buzz in but was blocked", name),
         Some(false) => {
             state_lock.scores.get_mut(&name).map(|p| p.blocked = true);
-            state_lock.buzzer.take(name);
-            state_lock.update_marker();
+            if state_lock.buzzer == Buzzer::Open {
+                info!("{} has buzzed in", name);
+                state_lock.buzzer.take(name);
+                state_lock.update_marker();
+            } else { debug!("{} tried to buzz in while it was closed", name); }
         },
         None => return HttpResponse::BadRequest().finish(),
     }
@@ -135,7 +138,7 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
                 Some(())
             },
             Command::ClearBlocked => {
-                state_lock.scores.values_mut().map(|p| p.blocked = false);
+                state_lock.scores.values_mut().for_each(|p| p.blocked = false);
                 Some(())
             },
             Command::Block{name} =>
@@ -157,7 +160,7 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
                 let e = state_lock.history.get(i)?;
                 let name = e.name.clone();
                 let score = e.score;
-                let prev_score = state_lock.history.iter_mut()
+                let prev_score = state_lock.history.iter()
                     .skip(i+1)
                     .find(|e| e.name == name)
                     .map(|e| e.score)?;
@@ -176,15 +179,16 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
         Some(()) => {
             debug!("{:?}", state_lock.history);
             state_lock.update_marker();
+            HttpResponse::NoContent().finish()
         },
         None => {
             warn!(
                 "couldn't execute command; \
                 most likely a nonexistant player was named."
             );
+            HttpResponse::BadRequest().finish()
         },
     }
-    HttpResponse::NoContent().finish()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,38 +223,19 @@ async fn serve_text_command(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// returns "truthy" nonempty string if {name} isn't in State.blocked
-#[get("/blocked/{name}")]
-async fn serve_blocked(
-    name: web::Path<String>,
-    app_state: web::Data<Mutex<State>>,
-) -> HttpResponse
-{
-    let state_lock = app_state.lock().unwrap();
-    let blocked = state_lock.scores.get(&name.into_inner())
-        .map(|p| p.blocked);
-    match blocked {
-        Some(true) => HttpResponse::Ok().body("!"),
-        Some(false) => HttpResponse::Ok().body(""),
-        None => HttpResponse::BadRequest().finish(),
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // returns State.scores in JSON
 #[get("/state/scores")]
 async fn serve_scores(app_state: web::Data<Mutex<State>>) -> HttpResponse {
+    trace!("serving /state/scores");
     let state_lock = app_state.lock().unwrap();
-    let scores = state_lock.scores.iter()
-        .map(|(name, Player{score, ..})| NamedPlayer{name: name.to_string(), score: *score})
-        .collect::<Vec<_>>();
-    HttpResponse::Ok().json(scores)
+    HttpResponse::Ok().json(&state_lock.scores)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // returns State.history in JSON
 #[get("/state/history")]
 async fn serve_history(app_state: web::Data<Mutex<State>>) -> HttpResponse {
+    trace!("serving /state/history");
     let state_lock = app_state.lock().unwrap();
     HttpResponse::Ok().json(&state_lock.history)
 }
@@ -319,7 +304,6 @@ async fn go() -> Result<(), Box<dyn Error>> {
             .service(serve_command)
             .service(serve_text_command)
             .service(serve_state)
-            .service(serve_blocked)
             .service(serve_scores)
             .service(serve_history)
     })

@@ -16,32 +16,30 @@
     import Setup          from './Setup.svelte';
 
     async function updateClientState() {
-        let newBuzzer: Buzzer;
-    
-        await fetchObject<Buzzer>("/state/buzzer").then(res => newBuzzer = res);
-
-        if (newBuzzer.state !== $clientBuzzer.state) {
-            $contestants.map(contestant => {
-                fetch(`/blocked/${contestant.name}`)
-                    .then(res => res.text())
-                    .then(res => contestant.blocked = (res === "!"));
-            });
-            $contestants = $contestants;
-            $clientBuzzer = newBuzzer;
-        }
+        await fetchObject<Buzzer>("/state/buzzer").then(res => {
+            if (res.state !== $clientBuzzer.state) {
+                console.log(res);
+                console.log($clientBuzzer);
+                $clientBuzzer = res;
+            }
+        });
 
         await fetchObject<Player[]>("/state/scores")
-            .then(res => $clientScores = res);
+            .then(res => {
+                $clientScores = res;
+                $contestants.map(c => c.blocked = $clientScores[c.name].blocked);
+            });
 
         await fetchObject<HistEntry[]>("/state/history")
             .then(res => $clientHistory = res);
     }
 
     async function checkMarker() {
-        let newMarker: string;
+        let newMarker: number;
         await fetch("/marker")
-            .then(res => res.text())
-            .then(res => { newMarker = res; $serverDown = false })
+            .then(res => res.arrayBuffer())
+            .then(x => new Uint8Array(x))
+            .then(x => { newMarker = x[0]; $serverDown = false })
             .catch(() => $serverDown = true);
 
         if (newMarker !== $marker) {
@@ -68,7 +66,7 @@
     {/if}
 {/if}
 
-<div id="footer">v1.3.2</div>
+<div id="footer">v2.2.2</div>
 
 <style>
     #footer {

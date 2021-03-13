@@ -1,7 +1,7 @@
 <script lang="ts">
     import { contestants, amHost, inSetup, clientScores } from './stores';
     import { postObject, buzzKeys } from './utils';
-    import type { Contestant, Player } from './types';
+    import type { Contestant } from './types';
 
     let buzzKeyIndex = 1;
 
@@ -29,9 +29,11 @@
         $inSetup = false;
     }
 
-    // $: dup = $contestants.some((c: Contestant) =>
-    //     $clientScores.some((p: Player) => p.name === c.name)
-    // );
+    $: dup = $contestants.some((c: Contestant) =>
+        Object.entries($clientScores).some((p: [string, { score: number }]) =>
+            p[0] === c.name
+        )
+    );
 </script>
 
 contestant(s), enter your name(s)<br/>
@@ -46,7 +48,7 @@ contestant(s), enter your name(s)<br/>
 <button on:mousedown={addContestant}>add contestant</button>
 <button on:mousedown={removeContestant}
         disabled={$contestants.length === 0}>remove contestant</button>
-{#if false}
+{#if dup}
     <br/><strong id="dup">some of these names are taken</strong>
 {/if}
 
@@ -58,7 +60,7 @@ does this device need host access?<br/>
 </button>
 
 <hr/>
-<button class="large" on:mousedown={play} disabled={false}>play</button>
+<button class="large" on:mousedown={play} disabled={dup}>play</button>
 
 <style>
     #dup {

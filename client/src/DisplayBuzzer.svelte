@@ -13,6 +13,7 @@
         buzzerText = "the buzzer is closed";
     } else if ($clientBuzzer.state == "Open") {
         buzzerColor = !$contestants.every(c => c.blocked)
+            || $contestants.length === 0
             ? "a3be8c" : "ebcb8b";
         buzzerText = "the buzzer is open";
     } else if ($clientBuzzer.state == "TakenBy") {
