@@ -8,10 +8,17 @@
         if (event.code === contestant.buzzKey && !contestant.blocked)
             buzz(contestant.name);
     });
+
+    function defocus() {
+        let elem: HTMLElement = document.activeElement as HTMLElement;
+        elem.blur();
+    }
 </script>
 
-<select bind:value={contestant.buzzKey}>
+<select bind:value={contestant.buzzKey} on:change={defocus}>
     {#each buzzKeys as buzzKey}
-        <option value={buzzKey.code}>{buzzKey.name}</option>
+        <option value={buzzKey.code}>
+            {buzzKey.name}
+        </option>
     {/each}
 </select>

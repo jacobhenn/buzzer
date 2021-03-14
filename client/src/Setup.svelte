@@ -1,18 +1,24 @@
 <script lang="ts">
     import { contestants, amHost, inSetup, clientScores } from './stores';
-    import { postObject } from './utils';
-    import type { Contestant, Player } from './types';
+    import { postObject, buzzKeys } from './utils';
+    import type { Contestant } from './types';
+
+    let buzzKeyIndex = 1;
 
     function addContestant(): void {
         $contestants =
             [...$contestants,
-             { name: "", blocked: false, buzzKey: "Space" }
+             { name: "", blocked: false, buzzKey:
+                 buzzKeys[buzzKeyIndex].code
+             }
             ];
+        buzzKeyIndex++;
     }
 
     function removeContestant(): void {
         $contestants.pop();
         $contestants = $contestants;
+        buzzKeyIndex--;
     }
 
     function play(): void {
@@ -24,7 +30,9 @@
     }
 
     $: dup = $contestants.some((c: Contestant) =>
-        $clientScores.some((p: Player) => p.name === c.name)
+        Object.entries($clientScores).some((p: [string, { score: number }]) =>
+            p[0] === c.name
+        )
     );
 </script>
 

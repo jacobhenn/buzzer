@@ -1,13 +1,14 @@
 <script lang="ts">
     import {
-        clientBuzzer, clientScores, inSetup,
-        contestants, amHost, serverDown, marker
+        clientBuzzer, clientScores, inSetup, clientHistory,
+        contestants, amHost, serverDown, marker, inHistory
     } from './stores';
 
-    import { fetchObject, postObject } from './utils';
+    import { fetchObject } from './utils';
 
-    import type { Player, Buzzer } from './types';
+    import type { Player, Buzzer, HistEntry } from './types';
 
+    import DisplayHistory from './DisplayHistory.svelte';
     import SelectBuzzKeys from './SelectBuzzKeys.svelte';
     import DisplayBuzzer  from './DisplayBuzzer.svelte';
     import DisplayScores  from './DisplayScores.svelte';
@@ -15,31 +16,31 @@
     import Setup          from './Setup.svelte';
 
     async function updateClientState() {
-        let newBuzzer: Buzzer;
-    
-        await fetchObject<Buzzer>("/state/buzzer").then(res => newBuzzer = res);
-
-        if (newBuzzer.state !== $clientBuzzer.state) {
-            $contestants.map(contestant => {
-                fetch(`/blocked/${contestant.name}`)
-                    .then(res => res.text())
-                    .then(res => contestant.blocked = (res === "!"));
-            });
-            $contestants = $contestants;
-            $clientBuzzer = newBuzzer;
-        }
+        await fetchObject<Buzzer>("/state/buzzer").then(res => {
+            if (res.state !== $clientBuzzer.state) {
+                $clientBuzzer = res;
+            }
+        });
 
         await fetchObject<Player[]>("/state/scores")
-            .then(res => $clientScores = res);
+            .then(res => {
+                $clientScores = res;
+                if (!$inSetup) {
+                    $contestants.map(c => c.blocked = $clientScores[c.name].blocked);
+                }
+            });
 
+        await fetchObject<HistEntry[]>("/state/history")
+            .then(res => $clientHistory = res);
     }
 
     async function checkMarker() {
-        let newMarker: string;
+        let newMarker: number;
         await fetch("/marker")
-            .then(res => res.text())
-            .then(res => { newMarker = res; $serverDown = false })
-            .catch(err => $serverDown = true);
+            .then(res => res.arrayBuffer())
+            .then(x => new Uint8Array(x))
+            .then(x => { newMarker = x[0]; $serverDown = false })
+            .catch(() => $serverDown = true);
 
         if (newMarker !== $marker) {
             updateClientState();
@@ -58,10 +59,14 @@
     {#if $amHost}
         <HostUtils/>
     {/if}
-    <DisplayScores/>
+    {#if $inHistory}
+        <DisplayHistory/>
+    {:else}
+        <DisplayScores/>
+    {/if}
 {/if}
 
-<div id="footer">v1.0.0</div>
+<div id="footer">v2.2.2</div>
 
 <style>
     #footer {

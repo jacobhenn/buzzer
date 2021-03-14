@@ -3,13 +3,13 @@
 * {
     color: #eceff4;
     font-family: 'Fira Code', monospace;
-    font-size: calc(10px + 2vw);
+    font-size: 2.5vw;
 }
 
 body {
     color: #eceff4;
     font-family: 'Fira Code', monospace;
-    font-size: calc(10px + 2vw);
+    font-size: 2.5vw;
 
     background-color: #2e3440;
     margin: 0px;
@@ -34,6 +34,7 @@ button {
     color: #eceff4;
     margin: 5px;
     padding: 5px;
+    transition: color 0.1s, background-color 0.1s;
 } button.large {
     margin: 10px;
     padding: 17px;
@@ -52,7 +53,11 @@ button {
     color: #2e3440;
     margin: 0px;
 } button.hidden:hover {
+    color: #eceff4;
+} button.x {
     color: #bf616a;
+    background-color: #2e3440;
+    margin: 0px;
 }
 
 input {
@@ -62,13 +67,14 @@ input {
     color: #eceff4;
     margin: 5px;
     padding: 5px;
+    transition: color 0.1s, background-color 0.1s;
 } input.large {
     margin: 10px;
     padding: 14px;
 } input.hidden {
     border: 3px solid #2e3440;
     background-color: #2e3440;
-    max-width: 10vw;
+    max-width: 8vw;
     padding: 0px;
     margin: 0px;
 } input:hover {
@@ -93,6 +99,7 @@ select {
     text-overflow: '';
     margin: 5px;
     padding: 5px;
+    transition: color 0.1s, background-color 0.1s;
 } select:hover {
     background-color: #4c566a;
     cursor: pointer;
