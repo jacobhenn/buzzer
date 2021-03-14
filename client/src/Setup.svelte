@@ -1,4 +1,6 @@
 <script lang="ts">
+    // TODO: trim leading and trailing whitespace on entered player names
+
     import { contestants, amHost, inSetup, clientScores } from './stores';
     import { postObject, buzzKeys } from './utils';
     import type { Contestant } from './types';
@@ -22,10 +24,16 @@
     }
 
     function play(): void {
+        for (const i in $contestants) {
+            $contestants[i].name = $contestants[i].name.trim();
+        }
+
         $contestants = $contestants.filter(c => !!c.name);
+
         $contestants.map(c =>
             postObject("/command", {action: "AddPlayer", name: c.name } )
         );
+
         $inSetup = false;
     }
 
