@@ -1,11 +1,26 @@
 <script lang="ts">
     import { postObject } from './utils';
-    import { amHost, clientScores } from './stores';
+    import { amHost, clientScores, contestants } from './stores';
 
     export let thisName: string;
     export let thisScore: number;
+    let thisColor: string = "eceff4";
 
     $: thisScoreString = thisScore.toString();
+
+    $: if (Object.entries($clientScores)
+        .some(c => c[0] === thisName && c[1].blocked)) {
+        thisColor = "ebcb8b";
+    } else if ($contestants.some(c => c.name === thisName)) {
+        thisColor = "88c0d0";
+    } else {
+        thisColor = "eceff4";
+    }
+
+    $: fontWeight = ($contestants.some(c => c.name === thisName))
+        ? "bold" : "normal";
+
+    $: style = `color:#${thisColor};font-weight:${fontWeight}`;
 
     function updateServerScore(): void {
         postObject("/command", {
@@ -16,9 +31,6 @@
     }
 
     function removePlayer(): void {
-        // immediately remove from client so change appears immediate
-        delete $clientScores[thisName];
-    
         postObject("/command", {
             action: "RemovePlayer",
             name: thisName,
@@ -32,14 +44,18 @@
     }
 </script>
 
-{thisName}:
+<span {style}>
+    {thisName}:
+</span>
 {#if $amHost}
     <input class="hidden"
            bind:value={thisScoreString}
            on:focusout={updateServerScore}
-           on:keydown={handleKeydown}/>
+           on:keydown={handleKeydown}
+           {style}/>
     <button class="x"
             on:mousedown={removePlayer}>🞬</button>
 {:else}
-    {thisScore}
-{/if}<br/>
+    <span {style}>{thisScore}</span>
+{/if}
+<br/>

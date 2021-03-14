@@ -17,8 +17,8 @@
 
     function removeHistEntry(): void {
         // remove the entry immediately on the client side to appear seamless
-        delete $clientHistory[thisIndex];
-        $clientHistory = $clientHistory;
+        // delete $clientHistory[thisIndex];
+        // $clientHistory = $clientHistory;
 
         postObject("/command", {
             action: "RemoveHistory",
@@ -42,12 +42,8 @@
            bind:value={thisScoreString}
            on:blur={updateServerHistEntry}
            on:keydown={handleKeydown}/>
-    {#if $clientHistory[thisIndex].score !== 0}
-        <button class="x"
-                on:mousedown={removeHistEntry}>🞬</button>
-    {:else}
-        <button class="x" disabled> </button>
-    {/if}
+    <button class="x"
+            on:mousedown={removeHistEntry}>🞬</button>
 {:else}
     {thisScore}
 {/if}

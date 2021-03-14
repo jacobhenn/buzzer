@@ -18,8 +18,6 @@
     async function updateClientState() {
         await fetchObject<Buzzer>("/state/buzzer").then(res => {
             if (res.state !== $clientBuzzer.state) {
-                console.log(res);
-                console.log($clientBuzzer);
                 $clientBuzzer = res;
             }
         });
@@ -27,7 +25,9 @@
         await fetchObject<Player[]>("/state/scores")
             .then(res => {
                 $clientScores = res;
-                $contestants.map(c => c.blocked = $clientScores[c.name].blocked);
+                if (!$inSetup) {
+                    $contestants.map(c => c.blocked = $clientScores[c.name].blocked);
+                }
             });
 
         await fetchObject<HistEntry[]>("/state/history")

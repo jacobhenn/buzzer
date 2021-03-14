@@ -1,5 +1,9 @@
 <script lang="ts">
-    import { contestants, clientBuzzer, serverDown } from './stores';
+    import {
+        contestants, clientBuzzer,
+        clientScores, serverDown
+    } from './stores';
+
     import { buzz } from './utils'
 
     let buzzerColor: string;
@@ -12,8 +16,8 @@
         buzzerColor = "bf616a";
         buzzerText = "the buzzer is closed";
     } else if ($clientBuzzer.state == "Open") {
-        buzzerColor = !$contestants.every(c => c.blocked)
-            || $contestants.length === 0
+        buzzerColor = (!$contestants.every(c => c.blocked)
+            || $contestants.length === 0)
             ? "a3be8c" : "ebcb8b";
         buzzerText = "the buzzer is open";
     } else if ($clientBuzzer.state == "TakenBy") {
@@ -37,8 +41,7 @@
         {#each $contestants as c}
             {#if c.blocked}
                 <div style="color:#ebcb8b">
-                    <strong style="color:#ebcb8b">{c.name}</strong>
-                    has already buzzed in
+                    <strong style="color:#ebcb8b">{c.name}</strong> has already buzzed in
                 </div>
             {/if}
         {/each}

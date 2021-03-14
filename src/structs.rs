@@ -1,6 +1,6 @@
-use serde::{Serialize, Deserialize};
-use log::LevelFilter;
 use chrono::{Local, Timelike};
+use log::LevelFilter;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -41,7 +41,7 @@ impl Buzzer {
     }
 
     pub fn take(&mut self, name: String) {
-        *self = Self::TakenBy{owner: name};
+        *self = Self::TakenBy { owner: name };
     }
 }
 
@@ -59,10 +59,12 @@ pub trait History {
 
 impl History for Vec<HistEntry> {
     fn log(&mut self, name: String, score: i32) {
-        if self.iter().any(|e| e.name == name && e.score == score) { return; }
+        if self.iter().any(|e| e.name == name && e.score == score) {
+            return;
+        }
         let now = Local::now().time();
         let time = (now.hour() as u8, now.minute() as u8);
-        self.insert(0, HistEntry{time, name, score});
+        self.insert(0, HistEntry { time, name, score });
     }
 }
 
@@ -79,19 +81,19 @@ pub struct Player {
 // is randomly regenerated every time the state changes to inform the clients
 // to perform the "pull" phase of their polling.
 pub struct State {
-    pub buzzer:  Buzzer,
-    pub scores:  HashMap<String, Player>,
+    pub buzzer: Buzzer,
+    pub scores: HashMap<String, Player>,
     pub history: Vec<HistEntry>,
-    pub marker:  u8,
+    pub marker: u8,
 }
 
 impl State {
     pub fn new() -> Self {
         Self {
-            buzzer:  Buzzer::Closed,
-            scores:  HashMap::new(),
+            buzzer: Buzzer::Closed,
+            scores: HashMap::new(),
             history: Vec::new(),
-            marker:  rand::random(),
+            marker: rand::random(),
         }
     }
 
@@ -99,7 +101,9 @@ impl State {
         let old_marker = self.marker;
         loop {
             self.marker = rand::random();
-            if self.marker != old_marker { break; }
+            if self.marker != old_marker {
+                break;
+            }
         }
     }
 }

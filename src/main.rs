@@ -11,14 +11,14 @@ mod command;
 mod structs;
 
 use crate::command::Command;
-use crate::structs::{Config, State, History, Player, Buzzer};
+use crate::structs::{Buzzer, Config, History, Player, State};
 use actix_web::{get, post, web, App, HttpResponse, HttpServer};
-use std::sync::Mutex;
-use log::{trace, debug, info, warn, error};
 use env_logger::Env;
+use log::{debug, error, info, trace, warn};
 use std::error::Error;
 use std::fs;
 use std::path::Path;
+use std::sync::Mutex;
 
 #[cfg(target_family = "unix")]
 const DIR: &str = env!("PWD");
@@ -42,17 +42,15 @@ const DIR: &str = env!("CD");
 ////////////////////////////////////////////////////////////////////////////////
 // home page - redirects you to ./client/public/index.html
 async fn serve_index() -> HttpResponse {
-    HttpResponse::Ok()
-        .content_type("text/html")
-        .body(
-            "<!DOCTYPE html>
+    HttpResponse::Ok().content_type("text/html").body(
+        "<!DOCTYPE html>
             <html>
                 <head>
                     <meta http-equiv='refresh'
                           content='0; URL=/static/index.html'>
                 </head>
-            </html>"
-        )
+            </html>",
+    )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,7 +58,8 @@ async fn serve_index() -> HttpResponse {
 #[get("/marker")]
 async fn serve_marker(app_state: web::Data<Mutex<State>>) -> HttpResponse {
     let state_lock = app_state.lock().unwrap();
-    HttpResponse::Ok().content_type("application/octet-stream")
+    HttpResponse::Ok()
+        .content_type("application/octet-stream")
         .body(Vec::from([state_lock.marker]))
 }
 
@@ -85,13 +84,15 @@ async fn serve_buzz(
     match state_lock.scores.get(&name).map(|p| p.blocked) {
         Some(true) => debug!("{} tried to buzz in but was blocked", name),
         Some(false) => {
-            state_lock.scores.get_mut(&name).map(|p| p.blocked = true);
             if state_lock.buzzer == Buzzer::Open {
                 info!("{} has buzzed in", name);
+                state_lock.scores.get_mut(&name).map(|o| o.blocked = true);
                 state_lock.buzzer.take(name);
                 state_lock.update_marker();
-            } else { debug!("{} tried to buzz in while it was closed", name); }
-        },
+            } else {
+                debug!("{} tried to buzz in while it was closed", name);
+            }
+        }
         None => return HttpResponse::BadRequest().finish(),
     }
     HttpResponse::NoContent().finish()
@@ -103,75 +104,101 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
     info!("{}", cmd);
     let unit_opt = || -> Option<()> {
         match cmd {
-            Command::AddScore{name, score} => {
+            Command::AddScore { name, score } => {
                 let p = state_lock.scores.get_mut(&name)?;
                 state_lock.history.log(name, p.score + score);
                 p.score += score;
                 Some(())
-            },
-            Command::SetScore{name, score} => {
+            }
+            Command::SetScore { name, score } => {
                 state_lock.history.log(name.clone(), score);
                 state_lock.scores.get_mut(&name).map(|p| p.score = score)
-            },
+            }
             Command::EndRound => {
-                state_lock.scores.values_mut().for_each(|p| p.blocked = false);
+                state_lock
+                    .scores
+                    .values_mut()
+                    .for_each(|p| p.blocked = false);
                 state_lock.buzzer.close();
                 Some(())
-            },
-            Command::OpenBuzzer => Some(state_lock.buzzer.open()),
+            }
+            Command::OpenBuzzer => {
+                state_lock.buzzer.open();
+                Some(())
+            }
             Command::AddPlayer { name } => {
-                let score = state_lock.history.iter()
-                    .find(|e| e.name == name).map(|e| e.score).unwrap_or_default();
+                let score = state_lock
+                    .history
+                    .iter()
+                    .find(|e| e.name == name)
+                    .map(|e| e.score)
+                    .unwrap_or_default();
                 state_lock.scores.insert(
                     name.clone(),
-                    Player{score, blocked: false}
+                    Player {
+                        score,
+                        blocked: false,
+                    },
                 );
                 state_lock.history.log(name, score);
                 Some(())
-            },
-            Command::RemovePlayer{name} => {
+            }
+            Command::RemovePlayer { name } => {
                 state_lock.scores.remove(&name)?;
                 Some(())
-            },
+            }
             Command::ClearPlayers => {
                 state_lock.scores.drain();
                 Some(())
-            },
+            }
             Command::ClearBlocked => {
-                state_lock.scores.values_mut().for_each(|p| p.blocked = false);
+                state_lock
+                    .scores
+                    .values_mut()
+                    .for_each(|p| p.blocked = false);
                 Some(())
-            },
-            Command::Block{name} =>
-                state_lock.scores.get_mut(&name).map(|p| p.blocked = true),
-            Command::Unblock{name} =>
-                state_lock.scores.get_mut(&name).map(|p| p.blocked = false),
+            }
+            Command::Block { name } => {
+                state_lock.scores.get_mut(&name).map(|p| p.blocked = true)
+            }
+            Command::Unblock { name } => {
+                state_lock.scores.get_mut(&name).map(|p| p.blocked = false)
+            }
             Command::CloseBuzzer => Some(state_lock.buzzer.close()),
-            Command::EditHistory{index: i, score} => {
+            Command::EditHistory { index: i, score } => {
                 let e = state_lock.history.get(i)?;
                 let diff: i32 = score - e.score;
                 state_lock.scores.get_mut(&e.name).map(|p| p.score += diff);
                 let name = e.name.clone();
-                state_lock.history.iter_mut()
-                    .take(i+1).filter(|x| x.name == name)
+                state_lock
+                    .history
+                    .iter_mut()
+                    .take(i + 1)
+                    .filter(|x| x.name == name)
                     .for_each(|x| x.score += diff);
                 Some(())
-            },
-            Command::RemoveHistory{index: i} => {
+            }
+            Command::RemoveHistory { index: i } => {
                 let e = state_lock.history.get(i)?;
                 let name = e.name.clone();
                 let score = e.score;
-                let prev_score = state_lock.history.iter()
-                    .skip(i+1)
+                let prev_score = state_lock
+                    .history
+                    .iter()
+                    .skip(i + 1)
                     .find(|e| e.name == name)
                     .map(|e| e.score)?;
                 let diff = score - prev_score;
                 state_lock.scores.get_mut(&name).map(|p| p.score -= diff);
                 state_lock.history.remove(i);
-                state_lock.history.iter_mut()
-                    .take(i).filter(|x| x.name == name)
+                state_lock
+                    .history
+                    .iter_mut()
+                    .take(i)
+                    .filter(|x| x.name == name)
                     .for_each(|x| x.score -= score);
                 Some(())
-            },
+            }
             Command::ClearHistory => Some(state_lock.history.clear()),
         }
     };
@@ -180,14 +207,14 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
             debug!("{:?}", state_lock.history);
             state_lock.update_marker();
             HttpResponse::NoContent().finish()
-        },
+        }
         None => {
             warn!(
                 "couldn't execute command; \
                 most likely a nonexistant player was named."
             );
             HttpResponse::BadRequest().finish()
-        },
+        }
     }
 }
 
@@ -197,8 +224,7 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
 async fn serve_command(
     command: web::Json<Command>,
     app_state: web::Data<Mutex<State>>,
-) -> HttpResponse
-{
+) -> HttpResponse {
     let command_inner = command.into_inner();
     let mut state_lock = app_state.lock().unwrap();
     match_command(command_inner, &mut state_lock)
@@ -210,8 +236,7 @@ async fn serve_command(
 async fn serve_text_command(
     cmd_str: String,
     app_state: web::Data<Mutex<State>>,
-) -> HttpResponse
-{
+) -> HttpResponse {
     let mut state_lock = app_state.lock().unwrap();
     match cmd_str.parse::<Command>() {
         Ok(cmd) => match_command(cmd, &mut state_lock),
@@ -278,8 +303,7 @@ async fn go() -> Result<(), Box<dyn Error>> {
         Err(_) => "warn",
     };
 
-    let env = Env::default()
-        .default_filter_or(alt_filter);
+    let env = Env::default().default_filter_or(alt_filter);
 
     env_logger::try_init_from_env(env)?;
 
@@ -309,5 +333,5 @@ async fn go() -> Result<(), Box<dyn Error>> {
     })
     .bind(address)?
     .run()
-    .await?)
+    .await?);
 }
