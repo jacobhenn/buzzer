@@ -1,7 +1,8 @@
 use chrono::{Local, Timelike};
-use log::LevelFilter;
+use log::{debug, LevelFilter};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Config represents the values expected to be present in conf.json
@@ -53,8 +54,22 @@ pub struct HistEntry {
     pub score: i32,
 }
 
+impl fmt::Display for HistEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "[history] {:02}:{:02} - {}: {}",
+            self.time.0,
+            self.time.1,
+            self.name,
+            self.score
+        )
+    }
+}
+
 pub trait History {
     fn log(&mut self, name: String, score: i32);
+    fn print(&self);
 }
 
 impl History for Vec<HistEntry> {
@@ -65,6 +80,12 @@ impl History for Vec<HistEntry> {
         let now = Local::now().time();
         let time = (now.hour() as u8, now.minute() as u8);
         self.insert(0, HistEntry { time, name, score });
+    }
+
+    fn print(&self) {
+        for entry in self {
+            debug!("{}", entry);
+        }
     }
 }
 

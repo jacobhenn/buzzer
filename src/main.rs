@@ -204,7 +204,7 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
     };
     match unit_opt() {
         Some(()) => {
-            debug!("{:?}", state_lock.history);
+            state_lock.history.print();
             state_lock.update_marker();
             HttpResponse::NoContent().finish()
         }
