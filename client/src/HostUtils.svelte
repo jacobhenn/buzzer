@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { clientBuzzer, pointsWorth } from './stores';
+    import { clientBuzzer, pointsWorth, clientScores } from './stores';
     import { postObject } from './utils';
 
     const nJPointValues = [200, 400, 600,  800,  1000]
@@ -37,6 +37,9 @@
     }
 
     function openBuzzer(): void {
+        if (Object.entries($clientScores).every(c => c[1].blocked)) {
+            incrementPointsWorth();
+        }
         postObject("/command", {
             action: "OpenBuzzer"
         });

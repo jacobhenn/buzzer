@@ -1,3 +1,5 @@
+import type { Contestant } from './types';
+
 export async function fetchObject<T>(url: string): Promise<T> {
     let res = await fetch(url);
     let obj = await res.json();
@@ -14,14 +16,16 @@ export function postObject<T>(url: string, obj: T): void {
     });
 }
 
-export function buzz(name: string): void {
-    fetch('/buzz', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'text/plain'
-        },
-        body: name
-    });
+export function buzz(contestant: Contestant): void {
+    if (!contestant.blocked) {
+        fetch('/buzz', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain'
+            },
+            body: contestant.name
+        });
+    }
 }
 
 export function containsDuplicates<T>(xs: T[]): boolean {

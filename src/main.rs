@@ -64,15 +64,6 @@ async fn serve_marker(app_state: web::Data<Mutex<State>>) -> HttpResponse {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// returns the current state of the buzzer in JSON form
-#[get("/state/buzzer")]
-async fn serve_state(app_state: web::Data<Mutex<State>>) -> HttpResponse {
-    trace!("serving /state/buzzer");
-    let state_lock = app_state.lock().unwrap();
-    HttpResponse::Ok().json(&state_lock.buzzer)
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // handles clients posting their names to "/buzz" to buzz in
 #[post("/buzz")]
 async fn serve_buzz(
@@ -123,7 +114,15 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
                 Some(())
             }
             Command::OpenBuzzer => {
-                state_lock.buzzer.open();
+                if state_lock.scores.values().all(|p| p.blocked) {
+                    state_lock.buzzer.close();
+                    state_lock
+                        .scores
+                        .values_mut()
+                        .for_each(|p| p.blocked = false);
+                } else {
+                    state_lock.buzzer.open();
+                }
                 Some(())
             }
             Command::AddPlayer { name } => {
@@ -248,21 +247,12 @@ async fn serve_text_command(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// returns State.scores in JSON
-#[get("/state/scores")]
-async fn serve_scores(app_state: web::Data<Mutex<State>>) -> HttpResponse {
-    trace!("serving /state/scores");
+// returns the entire server state in JSON
+#[get("/state")]
+async fn serve_state(app_state: web::Data<Mutex<State>>) -> HttpResponse {
+    trace!("serving /state");
     let state_lock = app_state.lock().unwrap();
-    HttpResponse::Ok().json(&state_lock.scores)
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// returns State.history in JSON
-#[get("/state/history")]
-async fn serve_history(app_state: web::Data<Mutex<State>>) -> HttpResponse {
-    trace!("serving /state/history");
-    let state_lock = app_state.lock().unwrap();
-    HttpResponse::Ok().json(&state_lock.history)
+    HttpResponse::Ok().json(&*state_lock)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -328,8 +318,6 @@ async fn go() -> Result<(), Box<dyn Error>> {
             .service(serve_command)
             .service(serve_text_command)
             .service(serve_state)
-            .service(serve_scores)
-            .service(serve_history)
     })
     .bind(address)?
     .run()

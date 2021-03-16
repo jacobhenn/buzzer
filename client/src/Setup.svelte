@@ -1,6 +1,4 @@
 <script lang="ts">
-    // TODO: trim leading and trailing whitespace on entered player names
-
     import { contestants, amHost, inSetup, clientScores } from './stores';
     import { postObject, buzzKeys } from './utils';
     import type { Contestant } from './types';

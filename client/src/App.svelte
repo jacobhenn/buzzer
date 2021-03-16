@@ -1,4 +1,7 @@
 <script lang="ts">
+    // TODO: grab state from a single URI
+    // TODO: track & display current points worth
+
     import {
         clientBuzzer, clientScores, inSetup, clientHistory,
         contestants, amHost, serverDown, marker, inHistory
@@ -6,7 +9,7 @@
 
     import { fetchObject } from './utils';
 
-    import type { Player, Buzzer, HistEntry } from './types';
+    import type { State, Buzzer, HistEntry } from './types';
 
     import DisplayHistory from './DisplayHistory.svelte';
     import SelectBuzzKeys from './SelectBuzzKeys.svelte';
@@ -16,22 +19,11 @@
     import Setup          from './Setup.svelte';
 
     async function updateClientState() {
-        await fetchObject<Buzzer>("/state/buzzer").then(res => {
-            if (res.state !== $clientBuzzer.state) {
-                $clientBuzzer = res;
-            }
+        await fetchObject<State>("/state").then(res => {
+            $clientBuzzer = res.buzzer;
+            $clientScores = res.scores;
+            $clientHistory = res.history;
         });
-
-        await fetchObject<Player[]>("/state/scores")
-            .then(res => {
-                $clientScores = res;
-                if (!$inSetup) {
-                    $contestants.map(c => c.blocked = $clientScores[c.name].blocked);
-                }
-            });
-
-        await fetchObject<HistEntry[]>("/state/history")
-            .then(res => $clientHistory = res);
     }
 
     async function checkMarker() {
@@ -48,8 +40,34 @@
         }
     }
 
+    function clickBuzz(event: MouseEvent): void {
+        let eventTarget = event.target as HTMLElement;
+        let eventSrcElement = event.srcElement as HTMLElement;
+
+        let forbiddenElements = ["INPUT", "BUTTON", "SELECT"];
+
+        if (forbiddenElements.includes(eventTarget.tagName)) { return; }
+        if (forbiddenElements.includes(eventSrcElement.tagName)) { return; }
+
+        for (const contestant of $contestants) {
+            if (contestant.buzzKey === "Click") {
+                buzz(contestant);
+            }
+        }
+    }
+
+    function keyBuzz(event: KeyboardEvent): void {
+        for (const contestant of $contestants) {
+            if (contestant.buzzKey.code === event.code) {
+                buzz(contestant);
+            }
+        }
+    }
+
     setInterval(checkMarker, 50);
 </script>
+
+<svelte:window on:mousedown={clickBuzz} on:keydown={keyBuzz}>
 
 {#if $inSetup}
     <Setup/>
@@ -66,7 +84,7 @@
     {/if}
 {/if}
 
-<div id="footer">v2.3.1-dev.2</div>
+<div id="footer">v3.0.0</div>
 
 <style>
     #footer {

@@ -101,10 +101,12 @@ pub struct Player {
 // they're blocked, see `scorekeeper::Player`), and a random `u8` marker which
 // is randomly regenerated every time the state changes to inform the clients
 // to perform the "pull" phase of their polling.
+#[derive(Serialize)]
 pub struct State {
     pub buzzer: Buzzer,
     pub scores: HashMap<String, Player>,
     pub history: Vec<HistEntry>,
+    #[serde(skip)]
     pub marker: u8,
 }
 

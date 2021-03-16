@@ -6,11 +6,11 @@ export const contestants =
 export const clientBuzzer =
     writable<Buzzer>({ state: "Closed", owner: null });
 
-export const amHost        = writable<boolean>    (false);
-export const inHistory     = writable<boolean>    (false);
-export const serverDown    = writable<boolean>    (false);
-export const inSetup       = writable<boolean>    (true);
-export const pointsWorth   = writable<number>     (200);
-export const marker        = writable<number>     (0);
+export const amHost        = writable<boolean>(false);
+export const inHistory     = writable<boolean>(false);
+export const serverDown    = writable<boolean>(false);
+export const inSetup       = writable<boolean>(true);
+export const pointsWorth   = writable<number>(200);
+export const marker        = writable<number>(0);
 export const clientHistory = writable<HistEntry[]>([]);
-export const clientScores  = writable             ([]);
+export const clientScores  = writable<{[key: string]: Player}>([]);

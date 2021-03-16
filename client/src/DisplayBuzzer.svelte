@@ -1,10 +1,5 @@
 <script lang="ts">
-    import {
-        contestants, clientBuzzer,
-        clientScores, serverDown
-    } from './stores';
-
-    import { buzz } from './utils'
+    import { contestants, clientBuzzer, serverDown } from './stores';
 
     let buzzerColor: string;
     let buzzerText: string;
@@ -25,25 +20,24 @@
             ? "88c0d0" : "bf616a";
         buzzerText = `${$clientBuzzer.owner} has buzzed in`;
     }
-
-    function handleClick(): void {
-        let c = $contestants[0];
-        if ($clientBuzzer.state == "Open" && !c.blocked) {
-            buzz(c.name);
-        }
-    }
 </script>
 
-<span id="buzzer-container" on:click={handleClick}>
+<span id="buzzer-container">
     <div id="topbar" style={`background-color:#${buzzerColor}`}></div>
     <div id="state" style={`color:#${buzzerColor}`}>{buzzerText}</div>
     {#if $clientBuzzer.state === "Open"}
         {#each $contestants as c}
             {#if c.blocked}
                 <div style="color:#ebcb8b">
-                    <strong style="color:#ebcb8b">{c.name}</strong> has already buzzed in
+                    <strong style="color:#ebcb8b">{c.name}</strong>
+                    has already buzzed in
                 </div>
             {/if}
+        {/each}
+        {#each $contestants.filter(c => c.buzzKey === "Click"
+                                     && !c.blocked) as c}
+            <strong style="color:#a3be8c">{c.name}</strong>,
+            <span style="color:#a3be8c">click or tap anywhere to buzz in</span>
         {/each}
     {/if}
 </span>
