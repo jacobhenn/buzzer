@@ -106,6 +106,7 @@ pub struct State {
     pub buzzer: Buzzer,
     pub scores: HashMap<String, Player>,
     pub history: Vec<HistEntry>,
+    pub ptsworth: i32,
     #[serde(skip)]
     pub marker: u8,
 }
@@ -116,6 +117,7 @@ impl State {
             buzzer: Buzzer::Closed,
             scores: HashMap::new(),
             history: Vec::new(),
+            ptsworth: 200,
             marker: rand::random(),
         }
     }

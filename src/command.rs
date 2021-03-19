@@ -25,6 +25,8 @@ pub enum Command {
     EditHistory { index: usize, score: i32 },
     RemoveHistory { index: usize },
     ClearHistory,
+    SetPtsWorth { pts: i32 },
+    OwnerCorrect,
 }
 
 impl fmt::Display for Command {
@@ -32,10 +34,10 @@ impl fmt::Display for Command {
         let cmd_str = match self {
             Self::AddScore { name, score } => {
                 format!("adding {} to {}", score, name)
-            }
+            },
             Self::SetScore { name, score } => {
                 format!("setting {}'s score to {}", name, score)
-            }
+            },
             Self::EndRound => "ending the round".to_string(),
             Self::OpenBuzzer => "opening the buzzer".to_string(),
             Self::RemovePlayer { name } => format!("removing {}", name),
@@ -50,8 +52,11 @@ impl fmt::Display for Command {
             }
             Self::RemoveHistory { index } => {
                 format!("removing history entry #{}", index + 1)
-            }
+            },
             Self::ClearHistory => "clearing history".to_string(),
+            Self::SetPtsWorth { pts } => format!("setting points worth to {}", pts),
+            Self::OwnerCorrect =>
+                "adding current points worth to buzzed in player".to_string(),
         };
         write!(f, "{}", cmd_str)
     }

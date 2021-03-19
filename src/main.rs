@@ -29,9 +29,7 @@ const DIR: &str = env!("CD");
 ////////////////////////////////////////////////////////////////////////////////
 // Full Server URI List:
 //     - "/": serves the svelte app
-//     - "/state/buzzer": responds with Buzzer in JSON form to GET
-//     - "/state/scores": provides JSON list of scores
-//     - "/state/history": provides editable list of changes to scores
+//     - "/state": returns the entire client state (see structs::State)
 //     - "/buzz": contestants can POST their names to buzz in
 //     - "/command": client can POST a JSON Command to execute it
 //     - "/textcommand": client can POST a text Command to execute it
@@ -199,6 +197,18 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
                 Some(())
             }
             Command::ClearHistory => Some(state_lock.history.clear()),
+            Command::SetPtsWorth { pts } => {
+                state_lock.ptsworth = pts;
+                Some(())
+            }
+            Command::OwnerCorrect => {
+                if let Buzzer::TakenBy { owner } = &state_lock.buzzer {
+                    info!("(adding {} to {})", state_lock.ptsworth, owner);
+                    let player = state_lock.scores.get_mut(owner)?;
+                    player.score += state_lock.ptsworth;
+                    Some(())
+                } else { None }
+            }
         }
     };
     match unit_opt() {

@@ -1,6 +1,6 @@
 <script lang="ts">
     import { postObject } from './utils';
-    import { amHost, clientScores, contestants } from './stores';
+    import { amHost, state, contestants } from './stores';
 
     export let thisName: string;
     export let thisScore: number;
@@ -8,7 +8,7 @@
 
     $: thisScoreString = thisScore.toString();
 
-    $: if (Object.entries($clientScores)
+    $: if (Object.entries($state.scores)
         .some(c => c[0] === thisName && c[1].blocked)) {
         thisColor = "ebcb8b";
     } else if ($contestants.some(c => c.name === thisName)) {

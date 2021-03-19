@@ -10,4 +10,5 @@ export type State = {
     buzzer: Buzzer;
     scores: { [key: string]: Player };
     history: HistEntry[];
+    ptsworth: number;
 };

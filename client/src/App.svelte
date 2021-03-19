@@ -1,15 +1,14 @@
 <script lang="ts">
-    // TODO: grab state from a single URI
     // TODO: track & display current points worth
 
     import {
-        clientBuzzer, clientScores, inSetup, clientHistory,
-        contestants, amHost, serverDown, marker, inHistory
+        state, inSetup, contestants, amHost,
+        serverDown, marker, inHistory
     } from './stores';
 
-    import { fetchObject } from './utils';
+    import { fetchObject, buzz } from './utils';
 
-    import type { State, Buzzer, HistEntry } from './types';
+    import type { State } from './types';
 
     import DisplayHistory from './DisplayHistory.svelte';
     import SelectBuzzKeys from './SelectBuzzKeys.svelte';
@@ -20,9 +19,7 @@
 
     async function updateClientState() {
         await fetchObject<State>("/state").then(res => {
-            $clientBuzzer = res.buzzer;
-            $clientScores = res.scores;
-            $clientHistory = res.history;
+            $state = res;
         });
     }
 
@@ -58,7 +55,7 @@
 
     function keyBuzz(event: KeyboardEvent): void {
         for (const contestant of $contestants) {
-            if (contestant.buzzKey.code === event.code) {
+            if (contestant.buzzKey === event.code) {
                 buzz(contestant);
             }
         }
@@ -67,11 +64,14 @@
     setInterval(checkMarker, 50);
 </script>
 
-<svelte:window on:mousedown={clickBuzz} on:keydown={keyBuzz}>
+<svelte:window on:mousedown={clickBuzz} on:keydown={keyBuzz}/>
 
 {#if $inSetup}
     <Setup/>
 {:else}
+    <!--<button id="setup" on:click={() => $inSetup = true}>
+        ← back to setup
+    </button>-->
     <DisplayBuzzer/>
     <SelectBuzzKeys/>
     {#if $amHost}
@@ -88,10 +88,16 @@
 
 <style>
     #footer {
-        color: #3b4252;
+        color: #4c566a;
         font-size: 15pt;
         position: fixed;
         bottom: 0;
         right: 0;
     }
+
+    /* #setup {
+        position: fixed;
+        top: 0;
+        left: 0;
+    } */
 </style>
