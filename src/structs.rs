@@ -59,10 +59,7 @@ impl fmt::Display for HistEntry {
         write!(
             f,
             "[history] {:02}:{:02} - {}: {}",
-            self.time.0,
-            self.time.1,
-            self.name,
-            self.score
+            self.time.0, self.time.1, self.name, self.score
         )
     }
 }

@@ -2,8 +2,9 @@
 #![deny(clippy::pedantic)]
 #![deny(clippy::nursery)]
 #![deny(clippy::cargo)]
+#![allow(clippy::future_not_send)]
+#![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::module_name_repetitions)]
-#![allow(clippy::items_after_statements)]
 #![allow(clippy::multiple_crate_versions)]
 #![allow(clippy::cargo_common_metadata)]
 
@@ -64,10 +65,7 @@ async fn serve_marker(app_state: web::Data<Mutex<State>>) -> HttpResponse {
 ////////////////////////////////////////////////////////////////////////////////
 // handles clients posting their names to "/buzz" to buzz in
 #[post("/buzz")]
-async fn serve_buzz(
-    name: String,
-    app_state: web::Data<Mutex<State>>,
-) -> HttpResponse {
+async fn serve_buzz(name: String, app_state: web::Data<Mutex<State>>) -> HttpResponse {
     let mut state_lock = app_state.lock().unwrap();
 
     match state_lock.scores.get(&name).map(|p| p.blocked) {
@@ -75,7 +73,11 @@ async fn serve_buzz(
         Some(false) => {
             if state_lock.buzzer == Buzzer::Open {
                 info!("{} has buzzed in", name);
-                state_lock.scores.get_mut(&name).map(|o| o.blocked = true);
+
+                if let Some(o) = state_lock.scores.get_mut(&name) {
+                    o.blocked = true;
+                }
+
                 state_lock.buzzer.take(name);
                 state_lock.update_marker();
             } else {
@@ -89,6 +91,7 @@ async fn serve_buzz(
 
 ////////////////////////////////////////////////////////////////////////////////
 // takes a command and a lock on the server state and executes the command.
+#[allow(clippy::too_many_lines)]
 fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
     info!("{}", cmd);
     let unit_opt = || -> Option<()> {
@@ -128,8 +131,7 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
                     .history
                     .iter()
                     .find(|e| e.name == name)
-                    .map(|e| e.score)
-                    .unwrap_or_default();
+                    .map(|e| e.score)?;
                 state_lock.scores.insert(
                     name.clone(),
                     Player {
@@ -155,17 +157,22 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
                     .for_each(|p| p.blocked = false);
                 Some(())
             }
-            Command::Block { name } => {
-                state_lock.scores.get_mut(&name).map(|p| p.blocked = true)
-            }
+            Command::Block { name } => state_lock.scores.get_mut(&name).map(|p| p.blocked = true),
             Command::Unblock { name } => {
                 state_lock.scores.get_mut(&name).map(|p| p.blocked = false)
             }
-            Command::CloseBuzzer => Some(state_lock.buzzer.close()),
+            Command::CloseBuzzer => {
+                state_lock.buzzer.close();
+                Some(())
+            }
             Command::EditHistory { index: i, score } => {
                 let e = state_lock.history.get(i)?;
                 let diff: i32 = score - e.score;
-                state_lock.scores.get_mut(&e.name).map(|p| p.score += diff);
+
+                if let Some(p) = state_lock.scores.get_mut(&e.name) {
+                    p.score += diff;
+                }
+
                 let name = e.name.clone();
                 state_lock
                     .history
@@ -186,7 +193,11 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
                     .find(|e| e.name == name)
                     .map(|e| e.score)?;
                 let diff = score - prev_score;
-                state_lock.scores.get_mut(&name).map(|p| p.score -= diff);
+
+                if let Some(p) = state_lock.scores.get_mut(&name) {
+                    p.score -= diff;
+                }
+
                 state_lock.history.remove(i);
                 state_lock
                     .history
@@ -196,7 +207,10 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
                     .for_each(|x| x.score -= score);
                 Some(())
             }
-            Command::ClearHistory => Some(state_lock.history.clear()),
+            Command::ClearHistory => {
+                state_lock.history.clear();
+                Some(())
+            }
             Command::SetPtsWorth { pts } => {
                 state_lock.ptsworth = pts;
                 Some(())
@@ -207,23 +221,23 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
                     let player = state_lock.scores.get_mut(owner)?;
                     player.score += state_lock.ptsworth;
                     Some(())
-                } else { None }
+                } else {
+                    None
+                }
             }
         }
     };
-    match unit_opt() {
-        Some(()) => {
-            state_lock.history.print();
-            state_lock.update_marker();
-            HttpResponse::NoContent().finish()
-        }
-        None => {
-            warn!(
-                "couldn't execute command; \
-                most likely a nonexistant player was named."
-            );
-            HttpResponse::BadRequest().finish()
-        }
+
+    if let Some(()) = unit_opt() {
+        state_lock.history.print();
+        state_lock.update_marker();
+        HttpResponse::NoContent().finish()
+    } else {
+        warn!(
+            "couldn't execute command; \
+            most likely a nonexistant player was named."
+        );
+        HttpResponse::BadRequest().finish()
     }
 }
 
@@ -237,23 +251,6 @@ async fn serve_command(
     let command_inner = command.into_inner();
     let mut state_lock = app_state.lock().unwrap();
     match_command(command_inner, &mut state_lock)
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// handles clients posting text Commands. See `command::Command`
-#[post("/textcommand")]
-async fn serve_text_command(
-    cmd_str: String,
-    app_state: web::Data<Mutex<State>>,
-) -> HttpResponse {
-    let mut state_lock = app_state.lock().unwrap();
-    match cmd_str.parse::<Command>() {
-        Ok(cmd) => match_command(cmd, &mut state_lock),
-        Err(err) => {
-            warn!(r#"couldn't parse text command "{}": {}"#, cmd_str, err);
-            HttpResponse::BadRequest().finish()
-        }
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -307,12 +304,11 @@ async fn go() -> Result<(), Box<dyn Error>> {
 
     env_logger::try_init_from_env(env)?;
 
-    match cfg_res {
-        Ok((_, true)) => warn!(
+    if let Ok((_, true)) = cfg_res {
+        warn!(
             "no conf.json found, writing default config to {:#?}",
             Path::new(DIR).join("conf.json"),
-        ),
-        _ => (),
+        );
     }
 
     let app_state = web::Data::new(Mutex::new(State::new()));
@@ -326,7 +322,6 @@ async fn go() -> Result<(), Box<dyn Error>> {
             .service(serve_marker)
             .service(serve_buzz)
             .service(serve_command)
-            .service(serve_text_command)
             .service(serve_state)
     })
     .bind(address)?
