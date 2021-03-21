@@ -16,18 +16,6 @@ export function postObject<T>(url: string, obj: T): void {
     });
 }
 
-export function buzz(contestant: Contestant): void {
-    if (!contestant.blocked) {
-        fetch('/buzz', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'text/plain'
-            },
-            body: contestant.name
-        });
-    }
-}
-
 export function containsDuplicates<T>(xs: T[]): boolean {
     return xs.length !== new Set(xs).size;
 }

@@ -98,8 +98,8 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
         match cmd {
             Command::AddScore { name, score } => {
                 let p = state_lock.scores.get_mut(&name)?;
-                state_lock.history.log(name, p.score + score);
                 p.score += score;
+                state_lock.history.log(name, p.score);
                 Some(())
             }
             Command::SetScore { name, score } => {
@@ -220,8 +220,9 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
             Command::OwnerCorrect => {
                 if let Buzzer::TakenBy { owner } = &state_lock.buzzer {
                     info!("(adding {} to {})", state_lock.ptsworth, owner);
-                    let player = state_lock.scores.get_mut(owner)?;
-                    player.score += state_lock.ptsworth;
+                    let p = state_lock.scores.get_mut(owner)?;
+                    p.score += state_lock.ptsworth;
+                    state_lock.history.log(owner.to_string(), p.score);
                     Some(())
                 } else {
                     None
