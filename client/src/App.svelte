@@ -1,14 +1,12 @@
 <script lang="ts">
-    // TODO: track & display current points worth
-
     import {
         state, inSetup, contestants, amHost,
         serverDown, marker, inHistory
     } from './stores';
 
-    import { fetchObject, buzz } from './utils';
+    import { fetchObject } from './utils';
 
-    import type { State } from './types';
+    import type { State, Contestant } from './types';
 
     import DisplayHistory from './DisplayHistory.svelte';
     import SelectBuzzKeys from './SelectBuzzKeys.svelte';
@@ -34,6 +32,18 @@
         if (newMarker !== $marker) {
             updateClientState();
             $marker = newMarker;
+        }
+    }
+
+    function buzz(c: Contestant): void {
+        if (!$state.scores[c.name].blocked) {
+            fetch('/buzz', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/plain'
+                },
+                body: c.name
+            });
         }
     }
 
@@ -84,7 +94,7 @@
     {/if}
 {/if}
 
-<div id="footer">v3.1.1</div>
+<div id="footer">v3.1.2</div>
 
 <style>
     #footer {

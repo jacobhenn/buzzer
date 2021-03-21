@@ -11,7 +11,7 @@
         buzzerColor = "bf616a";
         buzzerText = "the buzzer is closed";
     } else if ($state.buzzer.state == "Open") {
-        buzzerColor = (!$contestants.every(c => c.blocked)
+        buzzerColor = (!$contestants.every(c => $state.scores[c.name].blocked)
             || $contestants.length === 0)
             ? "a3be8c" : "ebcb8b";
         buzzerText = "the buzzer is open";
@@ -26,7 +26,7 @@
 <div id="state" style={`color:#${buzzerColor}`}>{buzzerText}</div>
 {#if $state.buzzer.state === "Open"}
     {#each $contestants as c}
-        {#if c.blocked}
+        {#if $state.scores[c.name].blocked}
             <div style="color:#ebcb8b">
                 <strong style="color:#ebcb8b">{c.name}</strong>
                 has already buzzed in
@@ -34,9 +34,9 @@
         {/if}
     {/each}
     {#each $contestants.filter(c => c.buzzKey === "Click"
-                                 && !c.blocked) as c}
-        <strong style="color:#a3be8c">{c.name}</strong>
-        <span style="color:#a3be8c">, click or tap anywhere to buzz in</span>
+                                 && !$state.scores[c.name].blocked) as c}
+        <strong style="color:#a3be8c">{c.name},</strong>
+        <span style="color:#a3be8c">click or tap anywhere to buzz in</span>
     {/each}
 {/if}
 {#if !$amHost}

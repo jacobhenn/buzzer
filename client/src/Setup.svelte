@@ -8,7 +8,7 @@
     function addContestant(): void {
         $contestants =
             [...$contestants,
-             { name: "", blocked: false, buzzKey:
+             { name: "", buzzKey:
                  buzzKeys[buzzKeyIndex].code
              }
             ];

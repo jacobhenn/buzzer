@@ -71,9 +71,9 @@ pub trait History {
 
 impl History for Vec<HistEntry> {
     fn log(&mut self, name: String, score: i32) {
-        if self.iter().any(|e| e.name == name && e.score == score) {
-            return;
-        }
+        // if self.iter().any(|e| e.name == name && e.score == score) {
+        //     return;
+        // }
         let now = Local::now().time();
         let time = (now.hour() as u8, now.minute() as u8);
         self.insert(0, HistEntry { time, name, score });
