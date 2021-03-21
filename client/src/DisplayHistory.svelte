@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { clientHistory, amHost, inHistory } from './stores';
+    import { state, amHost, inHistory } from './stores';
     import DisplaySingleHistEntry from './DisplaySingleHistEntry.svelte';
 
     let nameFilter: string = "";
@@ -27,8 +27,8 @@
 <input bind:value={nameFilter} placeholder="filter by player name"><br/>
 
 <div style="text-align:right;display:inline-block">
-{#each range(0, $clientHistory.length-1) as i}
-    {#if nameFilter === "" || $clientHistory[i].name.startsWith(nameFilter)}
+{#each range(0, $state.history.length-1) as i}
+    {#if nameFilter === "" || $state.history[i].name.startsWith(nameFilter)}
         <DisplaySingleHistEntry thisIndex={i}/><br/>
     {/if}
 {/each}

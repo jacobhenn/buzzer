@@ -1,10 +1,10 @@
 <script lang="ts">
     import { postObject } from './utils';
-    import { amHost, clientHistory } from './stores';
+    import { amHost, state } from './stores';
 
     export let thisIndex: number;
 
-    $: thisScore = $clientHistory[thisIndex].score;
+    $: thisScore = $state.history[thisIndex].score;
     $: thisScoreString = thisScore.toString();
 
     function updateServerHistEntry(): void {
@@ -16,10 +16,6 @@
     }
 
     function removeHistEntry(): void {
-        // remove the entry immediately on the client side to appear seamless
-        // delete $clientHistory[thisIndex];
-        // $clientHistory = $clientHistory;
-
         postObject("/command", {
             action: "RemoveHistory",
             index: thisIndex
@@ -34,9 +30,9 @@
 </script>
 
 <span class="time">
-    {$clientHistory[thisIndex].time[0].toString().padStart(2, "0")}:{$clientHistory[thisIndex].time[1].toString().padStart(2, "0")}
+    {$state.history[thisIndex].time[0].toString().padStart(2, "0")}:{$state.history[thisIndex].time[1].toString().padStart(2, "0")}
 </span>
-{$clientHistory[thisIndex].name}:
+{$state.history[thisIndex].name}:
 {#if $amHost}
     <input class="hidden"
            bind:value={thisScoreString}

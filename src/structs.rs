@@ -59,10 +59,7 @@ impl fmt::Display for HistEntry {
         write!(
             f,
             "[history] {:02}:{:02} - {}: {}",
-            self.time.0,
-            self.time.1,
-            self.name,
-            self.score
+            self.time.0, self.time.1, self.name, self.score
         )
     }
 }
@@ -101,10 +98,13 @@ pub struct Player {
 // they're blocked, see `scorekeeper::Player`), and a random `u8` marker which
 // is randomly regenerated every time the state changes to inform the clients
 // to perform the "pull" phase of their polling.
+#[derive(Serialize)]
 pub struct State {
     pub buzzer: Buzzer,
     pub scores: HashMap<String, Player>,
     pub history: Vec<HistEntry>,
+    pub ptsworth: i32,
+    #[serde(skip)]
     pub marker: u8,
 }
 
@@ -114,6 +114,7 @@ impl State {
             buzzer: Buzzer::Closed,
             scores: HashMap::new(),
             history: Vec::new(),
+            ptsworth: 200,
             marker: rand::random(),
         }
     }

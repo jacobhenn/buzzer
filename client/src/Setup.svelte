@@ -1,9 +1,9 @@
 <script lang="ts">
-    import { contestants, amHost, inSetup, clientScores } from './stores';
+    import { contestants, amHost, inSetup, state } from './stores';
     import { postObject, buzzKeys } from './utils';
     import type { Contestant } from './types';
 
-    let buzzKeyIndex = 1;
+    let buzzKeyIndex = $contestants.length;
 
     function addContestant(): void {
         $contestants =
@@ -22,15 +22,24 @@
     }
 
     function play(): void {
+        for (var c of $contestants) {
+            c.name = c.name.trim();
+        }
+
         $contestants = $contestants.filter(c => !!c.name);
-        $contestants.map(c =>
-            postObject("/command", {action: "AddPlayer", name: c.name } )
-        );
+
+        for (const c of $contestants) {
+            postObject("/command", {
+                action: "AddPlayer",
+                name: c.name
+            });
+        };
+
         $inSetup = false;
     }
 
     $: dup = $contestants.some((c: Contestant) =>
-        Object.entries($clientScores).some((p: [string, { score: number }]) =>
+        Object.entries($state.scores).some((p: [string, { score: number }]) =>
             p[0] === c.name
         )
     );
