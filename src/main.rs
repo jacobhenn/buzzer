@@ -131,7 +131,8 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
                     .history
                     .iter()
                     .find(|e| e.name == name)
-                    .map(|e| e.score)?;
+                    .map(|e| e.score)
+                    .unwrap_or_default();
                 state_lock.scores.insert(
                     name.clone(),
                     Player {
@@ -191,7 +192,8 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
                     .iter()
                     .skip(i + 1)
                     .find(|e| e.name == name)
-                    .map(|e| e.score)?;
+                    .map(|e| e.score)
+                    .unwrap_or_default();
                 let diff = score - prev_score;
 
                 if let Some(p) = state_lock.scores.get_mut(&name) {
