@@ -219,12 +219,18 @@ fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
             }
             Command::OwnerCorrect => {
                 if let Buzzer::TakenBy { owner } = &state_lock.buzzer {
-                    info!("(adding {} to {})", state_lock.ptsworth, owner);
+                    info!("+-> adding {} to {}", state_lock.ptsworth, owner);
                     let p = state_lock.scores.get_mut(owner)?;
                     p.score += state_lock.ptsworth;
                     state_lock.history.log(owner.to_string(), p.score);
+                    state_lock
+                        .scores
+                        .values_mut()
+                        .for_each(|p| p.blocked = false);
+                    state_lock.buzzer.close();
                     Some(())
                 } else {
+                    warn!("+-> but there was no owner!");
                     None
                 }
             }

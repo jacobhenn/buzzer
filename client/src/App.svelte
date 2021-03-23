@@ -1,4 +1,6 @@
 <script lang="ts">
+    // TODO: don't buzz in if buzzer already closed
+
     import {
         state, inSetup, contestants, amHost,
         serverDown, marker, inHistory

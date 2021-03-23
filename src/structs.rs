@@ -115,17 +115,12 @@ impl State {
             scores: HashMap::new(),
             history: Vec::new(),
             ptsworth: 200,
-            marker: rand::random(),
+            marker: 0u8,
         }
     }
 
     pub fn update_marker(&mut self) {
-        let old_marker = self.marker;
-        loop {
-            self.marker = rand::random();
-            if self.marker != old_marker {
-                break;
-            }
-        }
+        self.marker += 1;
+        debug!("incremented marker to {}", self.marker);
     }
 }

@@ -53,7 +53,7 @@ impl fmt::Display for Command {
             Self::SetPtsWorth { pts } => {
                 format!("setting points worth to {}", pts)
             }
-            Self::OwnerCorrect => "adding current points worth to buzzed in player".to_string(),
+            Self::OwnerCorrect => "| buzzed in player wass correct".to_string(),
         };
         write!(f, "{}", cmd_str)
     }

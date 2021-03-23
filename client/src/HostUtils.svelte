@@ -34,11 +34,8 @@
 
     function correct(): void {
         postObject("/command", {
-            action: "AddScore",
-            name: $state.buzzer.owner,
-            score: pointsWorth
+            action: "OwnerCorrect"
         });
-        endRound();
     }
 
     function openBuzzer(): void {
