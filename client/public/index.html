@@ -1,18 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset='utf-8'>
-	<meta name='viewport' content='width=device-width,initial-scale=1'>
+	<script lang="js">
+        const socket = new WebSocket(`ws://${window.location.host}/ws`);
 
-	<title>Buzzer</title>
-
-	<link rel='icon' type='image/png' href='./favicon.png'>
-	<link rel='stylesheet' href='./global.css'>
-	<link rel='stylesheet' href='./build/bundle.css'>
-
-	<script defer src='./build/bundle.js'></script>
+        socket.onmessage = function(event) {
+            let msg = JSON.parse(event.data);
+            console.table(msg);
+            document.getElementById("lastcmd").innerHTML = JSON.stringify(msg);
+        }
+	</script>
 </head>
 
 <body>
+    <span id="lastcmd"></span>
 </body>
 </html>

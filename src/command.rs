@@ -1,60 +1,52 @@
-use serde::Deserialize;
-use std::fmt;
+use crate::structs::State;
+use serde::{Serialize, Deserialize};
+use derive_more::Display;
+use actix::Message;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command represents an instruction by Host to change the State
 // Commands can be deserialized from a JSON request
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, Display)]
 #[serde(tag = "action")]
+#[derive(Message)]
+#[rtype(result = "()")]
 pub enum Command {
+    #[display(fmt = "adding {} to {}", score, name)]
     AddScore { name: String, score: i32 },
+    #[display(fmt = "setting {}'s score to {}", name, score)]
     SetScore { name: String, score: i32 },
+    #[display(fmt = "ending the round")]
     EndRound,
+    #[display(fmt = "opening the buzzer")]
     OpenBuzzer,
+    #[display(fmt = "removing {}", name)]
     RemovePlayer { name: String },
+    #[display(fmt = "adding {}", name)]
     AddPlayer { name: String },
+    #[display(fmt = "clearing players")]
     ClearPlayers,
+    #[display(fmt = "unblocking all players")]
     ClearBlocked,
+    #[display(fmt = "blocking {}", name)]
     Block { name: String },
+    #[display(fmt = "unblocking {}", name)]
     Unblock { name: String },
+    #[display(fmt = "closing the buzzer")]
     CloseBuzzer,
+    #[display(fmt = "changing history entry #{} to {} points", index, score)]
     EditHistory { index: usize, score: i32 },
+    #[display(fmt = "removing history entry #{}", index)]
     RemoveHistory { index: usize },
+    #[display(fmt = "clearing the history")]
     ClearHistory,
+    #[display(fmt = "setting points worth to {}", pts)]
     SetPtsWorth { pts: i32 },
+    #[display(fmt = "adding points worth to buzzed in player")]
     OwnerCorrect,
-}
-
-impl fmt::Display for Command {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let cmd_str = match self {
-            Self::AddScore { name, score } => {
-                format!("adding {} to {}", score, name)
-            }
-            Self::SetScore { name, score } => {
-                format!("setting {}'s score to {}", name, score)
-            }
-            Self::EndRound => "ending the round".to_string(),
-            Self::OpenBuzzer => "opening the buzzer".to_string(),
-            Self::RemovePlayer { name } => format!("removing {}", name),
-            Self::AddPlayer { name } => format!("adding {}", name),
-            Self::ClearPlayers => "removing all players".to_string(),
-            Self::ClearBlocked => "unblocking all players".to_string(),
-            Self::Block { name } => format!("blocking {} from buzzing", name),
-            Self::Unblock { name } => format!("unblocking {}", name),
-            Self::CloseBuzzer => "closing buzzer".to_string(),
-            Self::EditHistory { index, score: _ } => {
-                format!("changing history entry #{}", index + 1)
-            }
-            Self::RemoveHistory { index } => {
-                format!("removing history entry #{}", index + 1)
-            }
-            Self::ClearHistory => "clearing history".to_string(),
-            Self::SetPtsWorth { pts } => {
-                format!("setting points worth to {}", pts)
-            }
-            Self::OwnerCorrect => "| buzzed in player wass correct".to_string(),
-        };
-        write!(f, "{}", cmd_str)
-    }
+    // This command should only ever be sent to a client.
+    #[display(fmt = "SetState was sent to the server!")]
+    #[serde(skip_deserializing)]
+    SetState { state: State },
+    #[display(fmt = "{} is attempting to buzz in", name)]
+    Buzz { name: String },
 }

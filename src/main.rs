@@ -10,16 +10,23 @@
 
 mod command;
 mod structs;
+mod registry;
+mod websockets;
 
-use crate::command::Command;
-use crate::structs::{Buzzer, Config, History, Player, State};
-use actix_web::{get, post, web, App, HttpResponse, HttpServer};
+use crate::structs::{Config, State};
+use crate::websockets::Connection;
+use crate::registry::Registry;
+use actix_web::{get, web, App, HttpResponse, HttpServer, HttpRequest};
 use env_logger::Env;
-use log::{debug, error, info, trace, warn};
+use log::{debug, error, warn};
 use std::error::Error;
 use std::fs;
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Arc, RwLock};
+use actix::{Addr, Actor};
+use uuid::Uuid;
+use std::time::Instant;
+use actix_web_actors::ws;
 
 #[cfg(target_family = "unix")]
 const DIR: &str = env!("PWD");
@@ -30,249 +37,34 @@ const DIR: &str = env!("CD");
 ////////////////////////////////////////////////////////////////////////////////
 // Full Server URI List:
 //     - "/": serves the svelte app
-//     - "/state": returns the entire client state (see structs::State)
-//     - "/buzz": contestants can POST their names to buzz in
-//     - "/command": client can POST a JSON Command to execute it
-//     - "/textcommand": client can POST a text Command to execute it
-//     - "/marker": responds with the state marker (see structs::State)
+//     - "/ws": websocket connection endpoints
 //
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-// home page - redirects you to ./client/public/index.html
-async fn serve_index() -> HttpResponse {
-    HttpResponse::Ok().content_type("text/html").body(
-        "<!DOCTYPE html>
-            <html>
-                <head>
-                    <meta http-equiv='refresh'
-                          content='0; URL=/static/index.html'>
-                </head>
-            </html>",
-    )
-}
+// Provide the main connection endpoint where clients handshake and connect to
+// the server.
+#[get("/ws")]
+async fn socket(
+    req: HttpRequest,
+    stream: web::Payload,
+    data: web::Data<(Arc<RwLock<State>>, Addr<Registry>)>,
+) -> Result<HttpResponse, actix_web::Error> {
+    let data_ref = data.get_ref();
 
-////////////////////////////////////////////////////////////////////////////////
-// returns the `u8` marker
-#[get("/marker")]
-async fn serve_marker(app_state: web::Data<Mutex<State>>) -> HttpResponse {
-    let state_lock = app_state.lock().unwrap();
-    HttpResponse::Ok()
-        .content_type("application/octet-stream")
-        .body(Vec::from([state_lock.marker]))
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// handles clients posting their names to "/buzz" to buzz in
-#[post("/buzz")]
-async fn serve_buzz(name: String, app_state: web::Data<Mutex<State>>) -> HttpResponse {
-    let mut state_lock = app_state.lock().unwrap();
-
-    match state_lock.scores.get(&name).map(|p| p.blocked) {
-        Some(true) => debug!("{} tried to buzz in but was blocked", name),
-        Some(false) => {
-            if state_lock.buzzer == Buzzer::Open {
-                info!("{} has buzzed in", name);
-
-                if let Some(o) = state_lock.scores.get_mut(&name) {
-                    o.blocked = true;
-                }
-
-                state_lock.buzzer.take(name);
-                state_lock.update_marker();
-            } else {
-                debug!("{} tried to buzz in while it was closed", name);
-            }
-        }
-        None => return HttpResponse::BadRequest().finish(),
-    }
-    HttpResponse::NoContent().finish()
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// takes a command and a lock on the server state and executes the command.
-#[allow(clippy::too_many_lines)]
-fn match_command(cmd: Command, state_lock: &mut State) -> HttpResponse {
-    info!("{}", cmd);
-    let unit_opt = || -> Option<()> {
-        match cmd {
-            Command::AddScore { name, score } => {
-                let p = state_lock.scores.get_mut(&name)?;
-                p.score += score;
-                state_lock.history.log(name, p.score);
-                Some(())
-            }
-            Command::SetScore { name, score } => {
-                state_lock.history.log(name.clone(), score);
-                state_lock.scores.get_mut(&name).map(|p| p.score = score)
-            }
-            Command::EndRound => {
-                state_lock
-                    .scores
-                    .values_mut()
-                    .for_each(|p| p.blocked = false);
-                state_lock.buzzer.close();
-                Some(())
-            }
-            Command::OpenBuzzer => {
-                if state_lock.scores.values().all(|p| p.blocked) {
-                    state_lock.buzzer.close();
-                    state_lock
-                        .scores
-                        .values_mut()
-                        .for_each(|p| p.blocked = false);
-                } else {
-                    state_lock.buzzer.open();
-                }
-                Some(())
-            }
-            Command::AddPlayer { name } => {
-                let score = state_lock
-                    .history
-                    .iter()
-                    .find(|e| e.name == name)
-                    .map(|e| e.score)
-                    .unwrap_or_default();
-                state_lock.scores.insert(
-                    name.clone(),
-                    Player {
-                        score,
-                        blocked: false,
-                    },
-                );
-                state_lock.history.log(name, score);
-                Some(())
-            }
-            Command::RemovePlayer { name } => {
-                state_lock.scores.remove(&name)?;
-                Some(())
-            }
-            Command::ClearPlayers => {
-                state_lock.scores.drain();
-                Some(())
-            }
-            Command::ClearBlocked => {
-                state_lock
-                    .scores
-                    .values_mut()
-                    .for_each(|p| p.blocked = false);
-                Some(())
-            }
-            Command::Block { name } => state_lock.scores.get_mut(&name).map(|p| p.blocked = true),
-            Command::Unblock { name } => {
-                state_lock.scores.get_mut(&name).map(|p| p.blocked = false)
-            }
-            Command::CloseBuzzer => {
-                state_lock.buzzer.close();
-                Some(())
-            }
-            Command::EditHistory { index: i, score } => {
-                let e = state_lock.history.get(i)?;
-                let diff: i32 = score - e.score;
-
-                if let Some(p) = state_lock.scores.get_mut(&e.name) {
-                    p.score += diff;
-                }
-
-                let name = e.name.clone();
-                state_lock
-                    .history
-                    .iter_mut()
-                    .take(i + 1)
-                    .filter(|x| x.name == name)
-                    .for_each(|x| x.score += diff);
-                Some(())
-            }
-            Command::RemoveHistory { index: i } => {
-                let e = state_lock.history.get(i)?;
-                let name = e.name.clone();
-                let score = e.score;
-                let prev_score = state_lock
-                    .history
-                    .iter()
-                    .skip(i + 1)
-                    .find(|e| e.name == name)
-                    .map(|e| e.score)
-                    .unwrap_or_default();
-                let diff = score - prev_score;
-
-                if let Some(p) = state_lock.scores.get_mut(&name) {
-                    p.score -= diff;
-                }
-
-                state_lock.history.remove(i);
-                state_lock
-                    .history
-                    .iter_mut()
-                    .take(i)
-                    .filter(|x| x.name == name)
-                    .for_each(|x| x.score -= score);
-                Some(())
-            }
-            Command::ClearHistory => {
-                state_lock.history.clear();
-                Some(())
-            }
-            Command::SetPtsWorth { pts } => {
-                state_lock.ptsworth = pts;
-                Some(())
-            }
-            Command::OwnerCorrect => {
-                if let Buzzer::TakenBy { owner } = &state_lock.buzzer {
-                    info!("+-> adding {} to {}", state_lock.ptsworth, owner);
-                    let p = state_lock.scores.get_mut(owner)?;
-                    p.score += state_lock.ptsworth;
-                    state_lock.history.log(owner.to_string(), p.score);
-                    state_lock
-                        .scores
-                        .values_mut()
-                        .for_each(|p| p.blocked = false);
-                    state_lock.buzzer.close();
-                    Some(())
-                } else {
-                    warn!("+-> but there was no owner!");
-                    None
-                }
-            }
-        }
+    let conn = Connection {
+        last_beat: Instant::now(),
+        state: data_ref.0.clone(),
+        registry: data_ref.1.clone(),
+        id: Uuid::new_v4(),
     };
 
-    if let Some(()) = unit_opt() {
-        state_lock.history.print();
-        state_lock.update_marker();
-        HttpResponse::NoContent().finish()
-    } else {
-        warn!(
-            "couldn't execute command; \
-            most likely a nonexistant player was named."
-        );
-        HttpResponse::BadRequest().finish()
-    }
+    debug!("connecting to new client at {}...", conn.id);
+    ws::start(conn, &req, stream)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// handles clients posting JSON Commands
-#[post("/command")]
-async fn serve_command(
-    command: web::Json<Command>,
-    app_state: web::Data<Mutex<State>>,
-) -> HttpResponse {
-    let command_inner = command.into_inner();
-    let mut state_lock = app_state.lock().unwrap();
-    match_command(command_inner, &mut state_lock)
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// returns the entire server state in JSON
-#[get("/state")]
-async fn serve_state(app_state: web::Data<Mutex<State>>) -> HttpResponse {
-    trace!("serving /state");
-    let state_lock = app_state.lock().unwrap();
-    HttpResponse::Ok().json(&*state_lock)
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// deserialize a Config from the conf.json file, or create one if it's missing
+// Deserialize a Config from the conf.json file, or create one if it's missing
 // read_cfg returns a `(Config, bool)` because I have an incessant need to log
 // everything with the `log` crate. It returns `(_, true)` if it had to create
 // a default config file so it can be logged with `warn!` in `go`, since
@@ -320,18 +112,20 @@ async fn go() -> Result<(), Box<dyn Error>> {
         );
     }
 
-    let app_state = web::Data::new(Mutex::new(State::new()));
+    let registry = Registry::default().start();
+    let state = Arc::new(RwLock::new(State::new()));
+
+    let data = web::Data::new((state, registry));
 
     let address = cfg_res?.0.address;
     return Ok(HttpServer::new(move || {
         App::new()
-            .app_data(app_state.clone())
-            .service(actix_files::Files::new("/static", "./client/public/"))
-            .route("/", web::get().to(serve_index))
-            .service(serve_marker)
-            .service(serve_buzz)
-            .service(serve_command)
-            .service(serve_state)
+            .service(socket)
+            .service(
+                actix_files::Files::new("/", "./client/public/")
+                    .index_file("index.html")
+            )
+            .app_data(data.clone())
     })
     .bind(address)?
     .run()
