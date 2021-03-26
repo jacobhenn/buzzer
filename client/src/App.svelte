@@ -4,7 +4,7 @@
         serverDown, inHistory
     } from './stores';
 
-    import { range, socket, logHistory } from './utils';
+    import { range, socket } from './utils';
 
     import type { Contestant } from './types';
 
@@ -15,6 +15,18 @@
     import HostUtils      from './HostUtils.svelte';
     import Setup          from './Setup.svelte';
 
+
+    function logHistory(n: string, s: number): void {
+        const d = new Date();
+        $state.history = [{
+            time: [d.getHours(), d.getMinutes()],
+            name: n,
+            score: s
+        }, ...$state.history];
+        console.log("the history has been updated to:");
+        console.table($state.history);
+    }
+
     socket.onmessage = function(event) {
         let cmd = JSON.parse(event.data);
         let a = cmd.action;
@@ -22,11 +34,13 @@
         if (a === "AddScore") {
             let p = $state.scores[cmd.name];
             p.score += cmd.score;
-            logHistory($state.history, cmd.name, p.score);
+            logHistory(cmd.name, p.score);
+            // $state.history = $state.history;
         } else if (a === "SetScore") {
             let p = $state.scores[cmd.name];
             p.score = cmd.score;
-            logHistory($state.history, cmd.name, p.score);
+            logHistory(cmd.name, p.score);
+            // $state.history = $state.history;
         } else if (a === "EndRound") {
             for (var p of Object.entries($state.scores)) {
                 p[1].blocked = false;
@@ -49,9 +63,11 @@
                 score: score,
                 blocked: false
             };
-            logHistory($state.history, cmd.name, score);
+            logHistory(cmd.name, score);
+            // $state.history = $state.history;
         } else if (a === "RemovePlayer") {
             delete $state.scores[cmd.name];
+            $state.scores = $state.scores;
         } else if (a === "ClearPlayers") {
             $state.scores = {};
         } else if (a === "ClearBlocked") {
@@ -81,7 +97,7 @@
             // What was the last history entry of this player before the
             // one we are deleting? If none, 0.
             let prevScore = $state.history
-                .slice(-cmd.index-1)
+                .slice(cmd.index+1)
                 .find(x => x.name === e.name)
                 .score;
             if (prevScore === undefined) prevScore = 0;
@@ -89,7 +105,8 @@
 
             $state.scores[e.name].score -= diff;
 
-            delete $state.history[cmd.index];
+            $state.history.splice(cmd.index, 1);
+            $state.history = $state.history;
 
             for (const i of range(0, cmd.index-1)) {
                 if ($state.history[i].name === e.name) {
@@ -103,7 +120,8 @@
         } else if (a === "OwnerCorrect") {
             let p = $state.scores[$state.buzzer.owner];
             p.score += $state.ptsworth;
-            logHistory($state.history, $state.buzzer.owner, p.score);
+            logHistory($state.buzzer.owner, p.score);
+            // $state.history = $state.history;
             Object.values($state.scores).map(p => p.blocked = false);
             $state.buzzer.state = "Closed";
         } else if (a === "SetState") {
@@ -157,9 +175,6 @@
 {#if $inSetup}
     <Setup/>
 {:else}
-    <!--<button id="setup" on:click={() => $inSetup = true}>
-        ← back to setup
-    </button>-->
     <DisplayBuzzer/>
     <SelectBuzzKeys/>
     {#if $amHost}
@@ -172,7 +187,7 @@
     {/if}
 {/if}
 
-<div id="footer">v4.0.0-dev.5</div>
+<div id="footer">v4.0.0</div>
 
 <style>
     #footer {
@@ -182,10 +197,4 @@
         bottom: 0;
         right: 0;
     }
-
-    /* #setup {
-        position: fixed;
-        top: 0;
-        left: 0;
-    } */
 </style>

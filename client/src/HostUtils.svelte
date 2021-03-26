@@ -36,6 +36,7 @@
         socket.send(JSON.stringify({
             action: "OwnerCorrect"
         }));
+        incrementPointsWorth();
     }
 
     function openBuzzer(): void {

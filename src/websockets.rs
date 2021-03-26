@@ -7,7 +7,7 @@ use serde_json;
 use actix::{Actor, StreamHandler, ActorContext, AsyncContext, Handler, Addr};
 use actix_web_actors::{ws, ws::{CloseCode, CloseReason}};
 use uuid::Uuid;
-use log::{trace, info, warn};
+use log::{trace, debug, info, warn, error};
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(10);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(15);
@@ -48,7 +48,12 @@ impl Actor for Connection {
         let r = self.state.read().unwrap();
         let cmdstr_res = CmdStr::new(&Command::SetState { state: r.clone() });
         if let Ok(cmdstr) = cmdstr_res {
-            tx.do_send(cmdstr);
+            match tx.do_send(cmdstr) {
+                Ok(_) => debug!("sending current state to {}", self.id),
+                Err(e) => {
+                    error!("couldn't send the state to {}: {}", self.id, e);
+                }
+            }
         }
         self.registry.do_send(Connect(self.id, tx));
         self.start_beat(ctx);
@@ -77,7 +82,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for Connection {
                         if opt.is_some() {
                             self.registry.do_send(cmd);
                         } else {
-                            info!(" -> couldn't execute command");
+                            debug!(" -> couldn't execute command");
                         }
                     }
                     Err(e) => {

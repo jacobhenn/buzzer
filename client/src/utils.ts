@@ -10,15 +10,6 @@ export function containsDuplicates<T>(xs: T[]): boolean {
     return xs.length !== new Set(xs).size;
 }
 
-export function logHistory(h: HistEntry[], n: string, s: number): void {
-    var d = new Date();
-    h = [{
-        time: [d.getHours(), d.getMinutes()],
-        name: n,
-        score: s
-    }, ...h];
-}
-
 export const buzzKeys = [
     { code: "Space",        name: "Space"        },
     { code: "NumpadEnter",  name: "Numpad Enter" },
