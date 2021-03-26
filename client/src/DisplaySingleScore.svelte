@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { postObject } from './utils';
+    import { socket } from './utils';
     import { amHost, state, contestants } from './stores';
 
     export let thisName: string;
@@ -23,18 +23,18 @@
     $: style = `color:#${thisColor};font-weight:${fontWeight}`;
 
     function updateServerScore(): void {
-        postObject("/command", {
+        socket.send(JSON.stringify({
             action: "SetScore",
             name: thisName,
             score: parseInt(thisScoreString)
-        });
+        }));
     }
 
     function removePlayer(): void {
-        postObject("/command", {
+        socket.send(JSON.stringify({
             action: "RemovePlayer",
             name: thisName,
-        });
+        }));
     }
 
     function handleKeydown(e: KeyboardEvent): void {

@@ -6,9 +6,8 @@ export const contestants =
 
 export const amHost     = writable<boolean>(false);
 export const inHistory  = writable<boolean>(false);
-export const serverDown = writable<boolean>(false);
 export const inSetup    = writable<boolean>(true);
-export const marker     = writable<number>(0);
+export const serverDown = writable<boolean>(false);
 
 export const state = writable<State>({
     buzzer: { state: "Closed", owner: null },

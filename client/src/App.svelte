@@ -1,14 +1,12 @@
 <script lang="ts">
-    // TODO: don't buzz in if buzzer already closed
-
     import {
         state, inSetup, contestants, amHost,
-        serverDown, marker, inHistory
+        serverDown, inHistory
     } from './stores';
 
-    import { fetchObject } from './utils';
+    import { range, socket, logHistory } from './utils';
 
-    import type { State, Contestant } from './types';
+    import type { Contestant } from './types';
 
     import DisplayHistory from './DisplayHistory.svelte';
     import SelectBuzzKeys from './SelectBuzzKeys.svelte';
@@ -17,35 +15,115 @@
     import HostUtils      from './HostUtils.svelte';
     import Setup          from './Setup.svelte';
 
-    async function updateClientState() {
-        await fetchObject<State>("/state").then(res => {
-            $state = res;
-        });
+    socket.onmessage = function(event) {
+        let cmd = JSON.parse(event.data);
+        let a = cmd.action;
+
+        if (a === "AddScore") {
+            let p = $state.scores[cmd.name];
+            p.score += cmd.score;
+            logHistory($state.history, cmd.name, p.score);
+        } else if (a === "SetScore") {
+            let p = $state.scores[cmd.name];
+            p.score = cmd.score;
+            logHistory($state.history, cmd.name, p.score);
+        } else if (a === "EndRound") {
+            for (var p of Object.entries($state.scores)) {
+                p[1].blocked = false;
+            }
+            $state.buzzer.state = "Closed"
+        } else if (a === "OpenBuzzer") {
+            // If everyone's blocked, OpenBuzzer closes the buzzer instead.
+            if (Object.values($state.scores).every(p => p.blocked)) {
+                $state.buzzer.state = "Closed";
+                Object.values($state.scores).map(p => p.blocked = false);
+            } else {
+                $state.buzzer.state = "Open";
+            }
+        } else if (a === "AddPlayer") {
+            // If the history contains a prior score for this player, use
+            // that score instead of 0.
+            let entry = $state.history.find(e => e.name === cmd.name);
+            let score = entry === undefined ? 0 : entry.score;
+            $state.scores[cmd.name] = {
+                score: score,
+                blocked: false
+            };
+            logHistory($state.history, cmd.name, score);
+        } else if (a === "RemovePlayer") {
+            delete $state.scores[cmd.name];
+        } else if (a === "ClearPlayers") {
+            $state.scores = {};
+        } else if (a === "ClearBlocked") {
+            Object.values($state.scores).map(p => p.blocked = false);
+        } else if (a === "Block") {
+            $state.scores[cmd.name].blocked = true;
+        } else if (a === "Unblock") {
+            $state.scores[cmd.name].blocked = false;
+        } else if (a === "CloseBuzzer") {
+            $state.buzzer.state = "Closed";
+        } else if (a === "EditHistory") {
+            let e = $state.history[cmd.index];
+            // How much did we add to/subtract from this player's score?
+            let diff: number = cmd.score - e.score;
+
+            // Add that diff to the current score of this player
+            $state.scores[e.name].score += diff;
+
+            // Add that diff to all this player's later history entries
+            for (const i of range(0, cmd.index)) {
+                if ($state.history[i].name === e.name) {
+                    $state.history[i].score += diff;
+                }
+            }
+        } else if (a === "RemoveHistory") {
+            let e = $state.history[cmd.index];
+            // What was the last history entry of this player before the
+            // one we are deleting? If none, 0.
+            let prevScore = $state.history
+                .slice(-cmd.index-1)
+                .find(x => x.name === e.name)
+                .score;
+            if (prevScore === undefined) prevScore = 0;
+            let diff = e.score - prevScore;
+
+            $state.scores[e.name].score -= diff;
+
+            delete $state.history[cmd.index];
+
+            for (const i of range(0, cmd.index-1)) {
+                if ($state.history[i].name === e.name) {
+                    $state.history[i].score -= diff;
+                }
+            }
+        } else if (a === "ClearHistory") {
+            $state.history = [];
+        } else if (a === "SetPtsWorth") {
+            $state.ptsworth = cmd.pts;
+        } else if (a === "OwnerCorrect") {
+            let p = $state.scores[$state.buzzer.owner];
+            p.score += $state.ptsworth;
+            logHistory($state.history, $state.buzzer.owner, p.score);
+            Object.values($state.scores).map(p => p.blocked = false);
+            $state.buzzer.state = "Closed";
+        } else if (a === "SetState") {
+            $state = cmd.state;
+        } else if (a === "Buzz") {
+            $state.scores[cmd.name].blocked = true;
+            $state.buzzer = { state: "TakenBy", owner: cmd.name };
+        }
     }
 
-    async function checkMarker() {
-        let newMarker: number;
-        await fetch("/marker")
-            .then(res => res.arrayBuffer())
-            .then(x => new Uint8Array(x))
-            .then(x => { newMarker = x[0]; $serverDown = false })
-            .catch(() => $serverDown = true);
-
-        if (newMarker !== $marker) {
-            updateClientState();
-            $marker = newMarker;
-        }
+    socket.onclose = function() {
+        $serverDown = true;
     }
 
     function buzz(c: Contestant): void {
         if (!$state.scores[c.name].blocked) {
-            fetch('/buzz', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain'
-                },
-                body: c.name
-            });
+            socket.send(JSON.stringify({
+                action: "Buzz",
+                name: c.name
+            }));
         }
     }
 
@@ -72,8 +150,6 @@
             }
         }
     }
-
-    setInterval(checkMarker, 50);
 </script>
 
 <svelte:window on:mousedown={clickBuzz} on:keydown={keyBuzz}/>
@@ -96,7 +172,7 @@
     {/if}
 {/if}
 
-<div id="footer">v3.1.2</div>
+<div id="footer">v4.0.0-dev.5</div>
 
 <style>
     #footer {

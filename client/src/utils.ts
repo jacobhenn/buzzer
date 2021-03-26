@@ -1,23 +1,22 @@
-import type { Contestant } from './types';
+import type { HistEntry, Contestant } from './types';
 
-export async function fetchObject<T>(url: string): Promise<T> {
-    let res = await fetch(url);
-    let obj = await res.json();
-    return obj;
+export function range(start: number, end: number): number[] {
+    return Array.from({ length: end - start + 1 }, (_, i) => i)
 }
 
-export function postObject<T>(url: string, obj: T): void {
-    fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(obj)
-    });
-}
+export const socket = new WebSocket(`ws://${window.location.host}/ws`);
 
 export function containsDuplicates<T>(xs: T[]): boolean {
     return xs.length !== new Set(xs).size;
+}
+
+export function logHistory(h: HistEntry[], n: string, s: number): void {
+    var d = new Date();
+    h = [{
+        time: [d.getHours(), d.getMinutes()],
+        name: n,
+        score: s
+    }, ...h];
 }
 
 export const buzzKeys = [

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { contestants, state, serverDown, amHost } from './stores';
+    import { serverDown, contestants, state, amHost } from './stores';
 
     let buzzerColor: string;
     let buzzerText: string;

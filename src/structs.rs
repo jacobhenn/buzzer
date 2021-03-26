@@ -153,8 +153,10 @@ impl State {
                 Some(())
             }
             Command::SetScore { name, score } => {
-                self.history.log(name.clone(), score);
-                self.scores.get_mut(&name).map(|p| p.score = score)
+                let p = self.scores.get_mut(&name)?;
+                p.score = score;
+                self.history.log(name, score);
+                Some(())
             }
             Command::EndRound => {
                 // Unblock everyone.
@@ -228,9 +230,8 @@ impl State {
                 let diff: i32 = score - e.score;
 
                 // Add that diff to the current score of this player
-                if let Some(p) = self.scores.get_mut(&e.name) {
-                    p.score += diff;
-                }
+                let p = self.scores.get_mut(&e.name)?;
+                p.score += diff;
 
                 // Add that diff to all this player's later history entries
                 let name = e.name.clone();
@@ -257,9 +258,8 @@ impl State {
                     .unwrap_or_default();
                 let diff = score - prev_score;
 
-                if let Some(p) = self.scores.get_mut(&name) {
-                    p.score -= diff;
-                }
+                let p = self.scores.get_mut(&name)?;
+                p.score -= diff;
 
                 self.history.remove(i);
                 self
@@ -267,7 +267,7 @@ impl State {
                     .iter_mut()
                     .take(i)
                     .filter(|x| x.name == name)
-                    .for_each(|x| x.score -= score);
+                    .for_each(|x| x.score -= diff);
                 Some(())
             }
             Command::ClearHistory => {
@@ -316,6 +316,7 @@ impl State {
                     }
                     Buzzer::Open => {
                         info!(" -> they succeeded!");
+                        self.scores.get_mut(&name).map(|p| p.blocked = true);
                         self.buzzer.take(name);
                         Some(())
                     }

@@ -1,6 +1,6 @@
 <script lang="ts">
     import { state } from './stores';
-    import { postObject } from './utils';
+    import { socket } from './utils';
 
     const nJPointValues = [200, 400, 600,  800,  1000];
     const dJPointValues = [400, 800, 1200, 1600, 2000];
@@ -11,10 +11,10 @@
         ? dJPointValues[pointValuesIndex]
         : nJPointValues[pointValuesIndex];
 
-    $: postObject("/command", {
+    $: socket.send(JSON.stringify({
         action: "SetPtsWorth",
         pts: pointsWorth
-    });
+    }));
 
     function incrementPointsWorth(): void {
         pointValuesIndex++;
@@ -26,25 +26,25 @@
     }
 
     function endRound(): void {
-        postObject("/command", {
+        socket.send(JSON.stringify({
             action: "EndRound"
-        });
+        }));
         incrementPointsWorth();
     }
 
     function correct(): void {
-        postObject("/command", {
+        socket.send(JSON.stringify({
             action: "OwnerCorrect"
-        });
+        }));
     }
 
     function openBuzzer(): void {
         if (Object.entries($state.scores).every(c => c[1].blocked)) {
             incrementPointsWorth();
         }
-        postObject("/command", {
+        socket.send(JSON.stringify({
             action: "OpenBuzzer"
-        });
+        }));
     }
 
     document.addEventListener("keydown", function(event) {

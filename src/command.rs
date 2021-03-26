@@ -44,7 +44,7 @@ pub enum Command {
     #[display(fmt = "adding points worth to buzzed in player")]
     OwnerCorrect,
     // This command should only ever be sent to a client.
-    #[display(fmt = "SetState was sent to the server!")]
+    #[display(fmt = "Set the state")]
     #[serde(skip_deserializing)]
     SetState { state: State },
     #[display(fmt = "{} is attempting to buzz in", name)]

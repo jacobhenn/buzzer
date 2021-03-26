@@ -1,6 +1,6 @@
 <script lang="ts">
     import { contestants, amHost, inSetup, state } from './stores';
-    import { postObject, buzzKeys } from './utils';
+    import { socket, buzzKeys } from './utils';
     import type { Contestant } from './types';
 
     let buzzKeyIndex = $contestants.length;
@@ -29,10 +29,10 @@
         $contestants = $contestants.filter(c => !!c.name);
 
         for (const c of $contestants) {
-            postObject("/command", {
+            socket.send(JSON.stringify({
                 action: "AddPlayer",
                 name: c.name
-            });
+            }));
         };
 
         $inSetup = false;

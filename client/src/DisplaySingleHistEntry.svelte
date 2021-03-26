@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { postObject } from './utils';
+    import { socket } from './utils';
     import { amHost, state } from './stores';
 
     export let thisIndex: number;
@@ -8,18 +8,18 @@
     $: thisScoreString = thisScore.toString();
 
     function updateServerHistEntry(): void {
-        postObject("/command", {
+        socket.send(JSON.stringify({
             action: "EditHistory",
             index: thisIndex,
             score: parseInt(thisScoreString)
-        });
+        }));
     }
 
     function removeHistEntry(): void {
-        postObject("/command", {
+        socket.send(JSON.stringify({
             action: "RemoveHistory",
             index: thisIndex
-        });
+        }));
     }
 
     function handleKeydown(event: { code: string }): void {

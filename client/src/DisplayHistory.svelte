@@ -1,12 +1,10 @@
 <script lang="ts">
     import { state, amHost, inHistory } from './stores';
+    import { range } from './utils';
+
     import DisplaySingleHistEntry from './DisplaySingleHistEntry.svelte';
 
     let nameFilter: string = "";
-
-    function range(start: number, end: number): number[] {
-        return Array.from({ length: end - start + 1 }, (_, i) => i)
-    }
 
     document.addEventListener("keydown", function(e) {
         if (e.key === "b" && document.activeElement.nodeName !== "INPUT") {
