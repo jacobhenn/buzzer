@@ -1,16 +1,16 @@
 use crate::command::Command;
 use crate::structs::CmdStr;
-use actix::{Recipient, Actor, Context, Handler, Message};
-use uuid::Uuid;
-use std::collections::HashMap;
+use actix::{Actor, Context, Handler, Message, Recipient};
 use log::debug;
+use std::collections::HashMap;
+use uuid::Uuid;
 
 // This type alias essentially represents the recipient part of an adress of
 // a Connection. It points to the rx end of a Connection actor.
 type Socket = Recipient<CmdStr>;
 
 // A message to the registry to register a client at Socket with id Uuid.
-#[derive(Message)]
+#[derive(Clone, Message)]
 #[rtype(result = "()")]
 pub struct Connect(pub Uuid, pub Socket);
 
@@ -22,6 +22,7 @@ pub struct Disconnect(pub Uuid);
 // The Registry stores a map of client ids to their sockets. Connections relay
 // commands they recieve to the registry, which in turn retransmits them to all
 // registered clients.
+#[derive(Debug)]
 pub struct Registry(pub HashMap<Uuid, Socket>);
 
 impl Default for Registry {
@@ -41,7 +42,7 @@ impl Handler<Command> for Registry {
     fn handle(&mut self, msg: Command, _: &mut Context<Self>) {
         debug!("resending command `{}` to all players", msg);
 
-        let cmdstr_res = CmdStr::new(&msg);
+        let cmdstr_res = CmdStr::new(msg);
 
         if let Ok(cmdstr) = cmdstr_res {
             let Self(sockets) = self;

@@ -1,11 +1,10 @@
 use crate::command::Command;
-use chrono::{Local, Timelike};
-use log::{debug, info, warn, error, LevelFilter};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fmt;
 use actix::Message;
+use chrono::{Local, Timelike};
+use log::{debug, error, LevelFilter};
+use serde::{Deserialize, Serialize};
 use serde_json::Result;
+use std::fmt;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Wrapper around a serialized command which can be passed to a Connection
@@ -14,8 +13,8 @@ use serde_json::Result;
 pub struct CmdStr(pub String);
 
 impl CmdStr {
-    pub fn new(cmd: &Command) -> Result<Self> {
-        let json_res = serde_json::to_string(cmd);
+    pub fn new(cmd: Command) -> Result<Self> {
+        let json_res = serde_json::to_string(&cmd);
         match json_res {
             Ok(json) => Ok(Self(json)),
             Err(e) => {
@@ -113,215 +112,4 @@ impl History for Vec<HistEntry> {
 pub struct Player {
     pub score: i32,
     pub blocked: bool,
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// State contains a Buzzer, a list of players' scores (along with whether or not
-// they're blocked, see `scorekeeper::Player`), and a random `u8` marker which
-// is randomly regenerated every time the state changes to inform the clients
-// to perform the "pull" phase of their polling.
-#[derive(Clone, Debug, Serialize)]
-pub struct State {
-    pub buzzer: Buzzer,
-    pub scores: HashMap<String, Player>,
-    pub history: Vec<HistEntry>,
-    pub ptsworth: i32,
-}
-
-impl State {
-    pub fn new() -> Self {
-        Self {
-            buzzer: Buzzer::Closed,
-            scores: HashMap::new(),
-            history: Vec::new(),
-            ptsworth: 200,
-        }
-    }
-
-    // Takes a Command and a mutable reference to the state and applies the command
-    // to the state. Returns None if a nonexistant player was named or the command
-    // was OwnerCorrect and the buzzer wasn't TakenBy anyone.
-    #[allow(clippy::too_many_lines)]
-    pub fn apply_command(&mut self, cmd: Command) -> Option<()> {
-        info!("{}", cmd);
-
-        match cmd {
-            Command::AddScore { name, score } => {
-                let p = self.scores.get_mut(&name)?;
-                p.score += score;
-                self.history.log(name, p.score);
-                Some(())
-            }
-            Command::SetScore { name, score } => {
-                let p = self.scores.get_mut(&name)?;
-                p.score = score;
-                self.history.log(name, score);
-                Some(())
-            }
-            Command::EndRound => {
-                // Unblock everyone.
-                self
-                    .scores
-                    .values_mut()
-                    .for_each(|p| p.blocked = false);
-                self.buzzer.close();
-                Some(())
-            }
-            Command::OpenBuzzer => {
-                // If everyone's blocked, OpenBuzzer closes the buzzer instead.
-                if self.scores.values().all(|p| p.blocked) {
-                    self.buzzer.close();
-                    self
-                        .scores
-                        .values_mut()
-                        .for_each(|p| p.blocked = false);
-                } else {
-                    self.buzzer.open();
-                }
-                Some(())
-            }
-            Command::AddPlayer { name } => {
-                // If the history contains a prior score for this player, use
-                // that score instead of 0.
-                let score = self
-                    .history
-                    .iter()
-                    .find(|e| e.name == name)
-                    .map(|e| e.score)
-                    .unwrap_or_default();
-                self.scores.insert(
-                    name.clone(),
-                    Player {
-                        score,
-                        blocked: false,
-                    },
-                );
-                self.history.log(name, score);
-                Some(())
-            }
-            Command::RemovePlayer { name } => {
-                self.scores.remove(&name)?;
-                Some(())
-            }
-            Command::ClearPlayers => {
-                self.scores.drain();
-                Some(())
-            }
-            Command::ClearBlocked => {
-                self
-                    .scores
-                    .values_mut()
-                    .for_each(|p| p.blocked = false);
-                Some(())
-            }
-            Command::Block { name } => {
-                self.scores.get_mut(&name).map(|p| p.blocked = true)
-            }
-            Command::Unblock { name } => {
-                self.scores.get_mut(&name).map(|p| p.blocked = false)
-            }
-            Command::CloseBuzzer => {
-                self.buzzer.close();
-                Some(())
-            }
-            Command::EditHistory { index: i, score } => {
-                let e = self.history.get(i)?;
-                // How much did we add to/subtract from this player's score?
-                let diff: i32 = score - e.score;
-
-                // Add that diff to the current score of this player
-                let p = self.scores.get_mut(&e.name)?;
-                p.score += diff;
-
-                // Add that diff to all this player's later history entries
-                let name = e.name.clone();
-                self
-                    .history
-                    .iter_mut()
-                    .take(i + 1)
-                    .filter(|x| x.name == name)
-                    .for_each(|x| x.score += diff);
-                Some(())
-            }
-            Command::RemoveHistory { index: i } => {
-                let e = self.history.get(i)?;
-                let name = e.name.clone();
-                let score = e.score;
-                // What was the last history entry of this player before the
-                // one we are deleting? If none, 0.
-                let prev_score = self
-                    .history
-                    .iter()
-                    .skip(i + 1)
-                    .find(|e| e.name == name)
-                    .map(|e| e.score)
-                    .unwrap_or_default();
-                let diff = score - prev_score;
-
-                let p = self.scores.get_mut(&name)?;
-                p.score -= diff;
-
-                self.history.remove(i);
-                self
-                    .history
-                    .iter_mut()
-                    .take(i)
-                    .filter(|x| x.name == name)
-                    .for_each(|x| x.score -= diff);
-                Some(())
-            }
-            Command::ClearHistory => {
-                self.history.clear();
-                Some(())
-            }
-            Command::SetPtsWorth { pts } => {
-                self.ptsworth = pts;
-                Some(())
-            }
-            Command::OwnerCorrect => {
-                if let Buzzer::TakenBy { owner } = &self.buzzer {
-                    info!(" -> adding {} to {}", self.ptsworth, owner);
-                    let p = self.scores.get_mut(owner)?;
-                    p.score += self.ptsworth;
-                    self.history.log(owner.to_string(), p.score);
-                    self
-                        .scores
-                        .values_mut()
-                        .for_each(|p| p.blocked = false);
-                    self.buzzer.close();
-                    Some(())
-                } else {
-                    info!(" -> but there is no owner!");
-                    None
-                }
-            }
-            Command::SetState { .. } => {
-                warn!("SetState should only ever be sent to a client");
-                None
-            }
-            Command::Buzz { name } => {
-                let p = self.scores.get(&name)?;
-                if p.blocked {
-                    info!(" -> but they were blocked!");
-                    return None;
-                }
-                match &self.buzzer {
-                    Buzzer::TakenBy { owner } => {
-                        info!(" -> but {} already buzzed in!", owner);
-                        None
-                    }
-                    Buzzer::Closed => {
-                        info!(" -> but the buzzer is closed!");
-                        None
-                    }
-                    Buzzer::Open => {
-                        info!(" -> they succeeded!");
-                        self.scores.get_mut(&name).map(|p| p.blocked = true);
-                        self.buzzer.take(name);
-                        Some(())
-                    }
-                }
-            }
-        }
-    }
 }

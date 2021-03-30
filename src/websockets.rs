@@ -1,21 +1,23 @@
 use crate::command::Command;
-use crate::structs::{CmdStr, State};
-use crate::registry::{Registry, Connect, Disconnect};
-use std::time::{Duration, Instant};
-use std::sync::{Arc, RwLock};
+use crate::registry::{Connect, Disconnect};
+use crate::state::State;
+use crate::structs::CmdStr;
+use actix::{Actor, ActorContext, Addr, AsyncContext, Handler, StreamHandler};
+use actix_web_actors::{
+    ws,
+    ws::{CloseCode, CloseReason},
+};
+use log::{info, trace, warn};
 use serde_json;
-use actix::{Actor, StreamHandler, ActorContext, AsyncContext, Handler, Addr};
-use actix_web_actors::{ws, ws::{CloseCode, CloseReason}};
+use std::time::{Duration, Instant};
 use uuid::Uuid;
-use log::{trace, debug, info, warn, error};
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(10);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(15);
 
 pub struct Connection {
     pub last_beat: Instant,
-    pub state: Arc<RwLock<State>>,
-    pub registry: Addr<Registry>,
+    pub state: Addr<State>,
     pub id: Uuid,
 }
 
@@ -28,7 +30,7 @@ impl Connection {
         ctx.run_interval(HEARTBEAT_INTERVAL, |act, ctx| {
             if Instant::now().duration_since(act.last_beat) > CLIENT_TIMEOUT {
                 warn!("{} timed out, disconnecting", act.id);
-                act.registry.do_send(Disconnect(act.id));
+                act.state.do_send(Disconnect(act.id));
                 ctx.stop();
             } else {
                 trace!("pinging {}", act.id);
@@ -45,51 +47,27 @@ impl Actor for Connection {
     fn started(&mut self, ctx: &mut Self::Context) {
         info!("a new client is connecting as {}", self.id);
         let tx = ctx.address().recipient();
-        let r = self.state.read().unwrap();
-        let cmdstr_res = CmdStr::new(&Command::SetState { state: r.clone() });
-        if let Ok(cmdstr) = cmdstr_res {
-            match tx.do_send(cmdstr) {
-                Ok(_) => debug!("sending current state to {}", self.id),
-                Err(e) => {
-                    error!("couldn't send the state to {}: {}", self.id, e);
-                }
-            }
-        }
-        self.registry.do_send(Connect(self.id, tx));
+        self.state.do_send(Connect(self.id, tx));
         self.start_beat(ctx);
     }
 
     fn stopped(&mut self, _ctx: &mut Self::Context) {
-        self.registry.do_send(Disconnect(self.id));
+        self.state.do_send(Disconnect(self.id));
     }
 }
 
 impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for Connection {
-    fn handle(
-        &mut self,
-        msg: Result<ws::Message, ws::ProtocolError>,
-        ctx: &mut Self::Context,
-    ) {
+    fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
         match msg {
             Ok(ws::Message::Text(txt)) => {
-                let cmd_res: serde_json::Result<Command> =
-                    serde_json::from_str(&txt);
+                let cmd_res: serde_json::Result<Command> = serde_json::from_str(&txt);
 
                 match cmd_res {
                     Ok(cmd) => {
-                        let opt = self.state
-                            .write().unwrap().apply_command(cmd.clone());
-                        if opt.is_some() {
-                            self.registry.do_send(cmd);
-                        } else {
-                            debug!(" -> couldn't execute command");
-                        }
+                        self.state.do_send(cmd);
                     }
                     Err(e) => {
-                        warn!(
-                            "recieved invalid data from {} ({})",
-                            self.id, e
-                        );
+                        warn!("recieved invalid data from {} ({})", self.id, e);
                         ctx.close(Some(CloseReason {
                             code: CloseCode::Protocol,
                             description: Some(format!("{}", e)),
@@ -105,9 +83,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for Connection {
                 );
                 ctx.close(Some(CloseReason {
                     code: CloseCode::Unsupported,
-                    description: Some(
-                        "this endpoint doesn't accept binary data".to_string()
-                    ),
+                    description: Some("this endpoint doesn't accept binary data".to_string()),
                 }));
                 ctx.stop();
             }
@@ -119,8 +95,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for Connection {
                 ctx.close(Some(CloseReason {
                     code: CloseCode::Size,
                     description: Some(
-                        "this endpoint doesn't accept continuation frames"
-                            .to_string()
+                        "this endpoint doesn't accept continuation frames".to_string(),
                     ),
                 }));
                 ctx.stop();

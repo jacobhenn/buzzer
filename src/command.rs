@@ -1,7 +1,7 @@
-use crate::structs::State;
-use serde::{Serialize, Deserialize};
-use derive_more::Display;
+use crate::state::State;
 use actix::Message;
+use derive_more::Display;
+use serde::{Deserialize, Serialize};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command represents an instruction by Host to change the State

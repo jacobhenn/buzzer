@@ -9,24 +9,24 @@
 #![allow(clippy::cargo_common_metadata)]
 
 mod command;
-mod structs;
 mod registry;
+mod state;
+mod structs;
 mod websockets;
 
-use crate::structs::{Config, State};
+use crate::state::State;
+use crate::structs::Config;
 use crate::websockets::Connection;
-use crate::registry::Registry;
-use actix_web::{get, web, App, HttpResponse, HttpServer, HttpRequest};
+use actix::{Actor, Addr};
+use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer};
+use actix_web_actors::ws;
 use env_logger::Env;
 use log::{debug, error, warn};
 use std::error::Error;
 use std::fs;
 use std::path::Path;
-use std::sync::{Arc, RwLock};
-use actix::{Addr, Actor};
-use uuid::Uuid;
 use std::time::Instant;
-use actix_web_actors::ws;
+use uuid::Uuid;
 
 #[cfg(target_family = "unix")]
 const DIR: &str = env!("PWD");
@@ -48,14 +48,13 @@ const DIR: &str = env!("CD");
 async fn socket(
     req: HttpRequest,
     stream: web::Payload,
-    data: web::Data<(Arc<RwLock<State>>, Addr<Registry>)>,
+    data: web::Data<Addr<State>>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let data_ref = data.get_ref();
 
     let conn = Connection {
         last_beat: Instant::now(),
-        state: data_ref.0.clone(),
-        registry: data_ref.1.clone(),
+        state: data_ref.clone(),
         id: Uuid::new_v4(),
     };
 
@@ -112,20 +111,14 @@ async fn go() -> Result<(), Box<dyn Error>> {
         );
     }
 
-    let registry = Registry::default().start();
-    let state = Arc::new(RwLock::new(State::new()));
-
-    let data = web::Data::new((state, registry));
+    let state = web::Data::new(State::default().start());
 
     let address = cfg_res?.0.address;
     return Ok(HttpServer::new(move || {
         App::new()
             .service(socket)
-            .service(
-                actix_files::Files::new("/", "./client/public/")
-                    .index_file("index.html")
-            )
-            .app_data(data.clone())
+            .service(actix_files::Files::new("/", "./client/public/").index_file("index.html"))
+            .app_data(state.clone())
     })
     .bind(address)?
     .run()
