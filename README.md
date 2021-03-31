@@ -8,7 +8,7 @@ This is a Rust web server (using [actix-web](https://actix.rs)). It uses a very 
 * Players who have already buzzed in in a given round are forbidden from buzzing in until the next round
 * Buzzer keeps track of players' scores
 * Buzzer keeps a comprehensive score history which can be edited arbitrarily by the host and automatically reconstructs current scores based on changes to the history.
-* The server and client communicate over websockets, meaning that virtually zero network resources are used and the only latency is the one network paths bring with them.
+* The server and client communicate over websockets, meaning that virtually zero network resources are used.
 
 # Use
 

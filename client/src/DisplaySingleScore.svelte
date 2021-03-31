@@ -8,8 +8,7 @@
 
     $: thisScoreString = thisScore.toString();
 
-    $: if (Object.entries($state.scores)
-        .some(c => c[0] === thisName && c[1].blocked)) {
+    $: if ($state.scores[thisName].blocked) {
         thisColor = "ebcb8b";
     } else if ($contestants.some(c => c.name === thisName)) {
         thisColor = "88c0d0";
@@ -53,9 +52,18 @@
            on:focusout={updateServerScore}
            on:keydown={handleKeydown}
            {style}/>
-    <button class="x"
+    <button class="remove"
+            title="remove player"
             on:mousedown={removePlayer}>🞬</button>
 {:else}
     <span {style}>{thisScore}</span>
 {/if}
 <br/>
+
+<style>
+    button.remove {
+        color: #bf616a;
+        background-color: #2e3440;
+        margin: 0px;
+    }
+</style>

@@ -1,7 +1,7 @@
 <script lang="ts">
     import {
         state, inSetup, contestants, amHost,
-        serverDown, inHistory
+        serverDown, inHistory, closeMsg, closeCode
     } from './stores';
 
     import { range, socket } from './utils';
@@ -23,20 +23,13 @@
             name: n,
             score: s
         }, ...$state.history];
-        console.log("the history has been updated to:");
-        console.table($state.history);
     }
 
     socket.onmessage = function(event) {
         let cmd = JSON.parse(event.data);
         let a = cmd.action;
 
-        if (a === "AddScore") {
-            let p = $state.scores[cmd.name];
-            p.score += cmd.score;
-            logHistory(cmd.name, p.score);
-            // $state.history = $state.history;
-        } else if (a === "SetScore") {
+        if (a === "SetScore") {
             let p = $state.scores[cmd.name];
             p.score = cmd.score;
             logHistory(cmd.name, p.score);
@@ -68,16 +61,8 @@
         } else if (a === "RemovePlayer") {
             delete $state.scores[cmd.name];
             $state.scores = $state.scores;
-        } else if (a === "ClearPlayers") {
-            $state.scores = {};
-        } else if (a === "ClearBlocked") {
-            Object.values($state.scores).map(p => p.blocked = false);
-        } else if (a === "Block") {
-            $state.scores[cmd.name].blocked = true;
         } else if (a === "Unblock") {
             $state.scores[cmd.name].blocked = false;
-        } else if (a === "CloseBuzzer") {
-            $state.buzzer.state = "Closed";
         } else if (a === "EditHistory") {
             let e = $state.history[cmd.index];
             // How much did we add to/subtract from this player's score?
@@ -113,8 +98,6 @@
                     $state.history[i].score -= diff;
                 }
             }
-        } else if (a === "ClearHistory") {
-            $state.history = [];
         } else if (a === "SetPtsWorth") {
             $state.ptsworth = cmd.pts;
         } else if (a === "OwnerCorrect") {
@@ -132,8 +115,10 @@
         }
     }
 
-    socket.onclose = function() {
+    socket.onclose = function(e: CloseEvent) {
         $serverDown = true;
+        $closeMsg = e.reason;
+        $closeCode = e.code;
     }
 
     function buzz(c: Contestant): void {
@@ -145,7 +130,7 @@
         }
     }
 
-    function clickBuzz(event: MouseEvent): void {
+    function clickBuzz(event: MouseEvent | TouchEvent): void {
         let eventTarget = event.target as HTMLElement;
         let eventSrcElement = event.srcElement as HTMLElement;
 
@@ -170,7 +155,7 @@
     }
 </script>
 
-<svelte:window on:mousedown={clickBuzz} on:keydown={keyBuzz}/>
+<svelte:window on:mousedown={clickBuzz} on:keydown={keyBuzz} on:touchstart={clickBuzz}/>
 
 {#if $inSetup}
     <Setup/>
@@ -187,7 +172,7 @@
     {/if}
 {/if}
 
-<div id="footer">v4.0.0</div>
+<div id="footer">v5.1.0</div>
 
 <style>
     #footer {

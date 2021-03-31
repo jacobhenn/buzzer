@@ -84,12 +84,6 @@ impl State {
         info!("{}", cmd);
 
         match cmd {
-            Command::AddScore { name, score } => {
-                let p = self.scores.get_mut(&name)?;
-                p.score += score;
-                self.history.log(name, p.score);
-                Some(())
-            }
             Command::SetScore { name, score } => {
                 let p = self.scores.get_mut(&name)?;
                 p.score = score;
@@ -135,20 +129,7 @@ impl State {
                 self.scores.remove(&name)?;
                 Some(())
             }
-            Command::ClearPlayers => {
-                self.scores.drain();
-                Some(())
-            }
-            Command::ClearBlocked => {
-                self.scores.values_mut().for_each(|p| p.blocked = false);
-                Some(())
-            }
-            Command::Block { name } => self.scores.get_mut(&name).map(|p| p.blocked = true),
             Command::Unblock { name } => self.scores.get_mut(&name).map(|p| p.blocked = false),
-            Command::CloseBuzzer => {
-                self.buzzer.close();
-                Some(())
-            }
             Command::EditHistory { index: i, score } => {
                 let e = self.history.get(i)?;
                 // How much did we add to/subtract from this player's score?
@@ -193,10 +174,6 @@ impl State {
                     .for_each(|x| x.score -= diff);
                 Some(())
             }
-            Command::ClearHistory => {
-                self.history.clear();
-                Some(())
-            }
             Command::SetPtsWorth { pts } => {
                 self.ptsworth = pts;
                 Some(())
@@ -222,9 +199,11 @@ impl State {
             Command::Buzz { name } => {
                 let p = self.scores.get(&name)?;
                 if p.blocked {
-                    info!(" -> but they were blocked!");
+                    info!(" -> but they are blocked!");
                     return None;
                 }
+
+                self.buzzer.check_timer();
                 match &self.buzzer {
                     Buzzer::TakenBy { owner } => {
                         info!(" -> but {} already buzzed in!", owner);
@@ -234,7 +213,7 @@ impl State {
                         info!(" -> but the buzzer is closed!");
                         None
                     }
-                    Buzzer::Open => {
+                    Buzzer::Open { .. } => {
                         info!(" -> they succeeded!");
                         self.scores.get_mut(&name).map(|p| p.blocked = true);
                         self.buzzer.take(name);

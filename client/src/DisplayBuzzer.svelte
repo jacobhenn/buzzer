@@ -1,29 +1,29 @@
 <script lang="ts">
-    import { serverDown, contestants, state, amHost } from './stores';
+    import { closeMsg, closeCode, serverDown, contestants, state, amHost } from './stores';
 
-    let buzzerColor: string;
-    let buzzerText: string;
-
-    $: if ($serverDown) {
-        buzzerColor = "d08770";
-        buzzerText = "couldn't reach server";
-    } else if ($state.buzzer.state == "Closed") {
-        buzzerColor = "bf616a";
-        buzzerText = "the buzzer is closed";
-    } else if ($state.buzzer.state == "Open") {
-        buzzerColor = (!$contestants.every(c => $state.scores[c.name].blocked)
-            || $contestants.length === 0)
-            ? "a3be8c" : "ebcb8b";
-        buzzerText = "the buzzer is open";
-    } else if ($state.buzzer.state == "TakenBy") {
-        buzzerColor = $contestants.some(c => c.name === $state.buzzer.owner)
-            ? "88c0d0" : "bf616a";
-        buzzerText = `${$state.buzzer.owner} has buzzed in`;
-    }
+    $: ownerHere = $contestants.some(c => c.name === $state.buzzer.owner);
 </script>
 
-<div id="topbar" style={`background-color:#${buzzerColor}`}></div>
-<div id="state" style={`color:#${buzzerColor}`}>{buzzerText}</div>
+<div id="topbar"
+    class:ownerHere
+    class:serverDown={$serverDown}
+    class={$state.buzzer.state}></div>
+<div id="state"
+    class:ownerHere
+    class:serverDown={$serverDown}
+    class={$state.buzzer.state}>
+    {#if $serverDown}
+        the server has closed the connection ({$closeCode})
+        {$closeMsg}
+    {:else if $state.buzzer.state === "Closed"}
+        the buzzer is closed
+    {:else if $state.buzzer.state === "Open"}
+        the buzzer is open
+    {:else}
+        {$state.buzzer.owner} has buzzed in
+    {/if}
+</div>
+
 {#if $state.buzzer.state === "Open"}
     {#each $contestants as c}
         {#if $state.scores[c.name].blocked}
@@ -52,10 +52,41 @@
         width: 100%;
         margin: none;
         padding: none;
+        transition: 0s;
+    }
+
+    #topbar.serverDown {
+        background-color: #d08770;
+    }
+
+    #topbar.Open {
+        background-color: #a3be8c;
+        width: 0%;
+        transition: width 5s linear;
+    } #topbar.Closed {
+        background-color: #bf616a;
+    } #topbar.TakenBy {
+        background-color: #bf616a;
+    } #topbar.TakenBy.ownerHere {
+        background-color: #88c0d0;
     }
 
     #state {
         font-weight: bold;
         margin-top: 20px;
+    }
+
+    #state.serverDown {
+        color: #d08770;
+    }
+
+    #state.Open {
+        color: #a3be8c;
+    } #state.Closed {
+        color: #bf616a;
+    } #state.TakenBy {
+        color: #bf616a;
+    } #state.TakenBy.ownerHere {
+        color: #88c0d0;
     }
 </style>

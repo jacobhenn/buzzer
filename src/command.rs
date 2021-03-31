@@ -11,8 +11,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Message)]
 #[rtype(result = "()")]
 pub enum Command {
-    #[display(fmt = "adding {} to {}", score, name)]
-    AddScore { name: String, score: i32 },
     #[display(fmt = "setting {}'s score to {}", name, score)]
     SetScore { name: String, score: i32 },
     #[display(fmt = "ending the round")]
@@ -23,22 +21,12 @@ pub enum Command {
     RemovePlayer { name: String },
     #[display(fmt = "adding {}", name)]
     AddPlayer { name: String },
-    #[display(fmt = "clearing players")]
-    ClearPlayers,
-    #[display(fmt = "unblocking all players")]
-    ClearBlocked,
-    #[display(fmt = "blocking {}", name)]
-    Block { name: String },
     #[display(fmt = "unblocking {}", name)]
     Unblock { name: String },
-    #[display(fmt = "closing the buzzer")]
-    CloseBuzzer,
     #[display(fmt = "changing history entry #{} to {} points", index, score)]
     EditHistory { index: usize, score: i32 },
     #[display(fmt = "removing history entry #{}", index)]
     RemoveHistory { index: usize },
-    #[display(fmt = "clearing the history")]
-    ClearHistory,
     #[display(fmt = "setting points worth to {}", pts)]
     SetPtsWorth { pts: i32 },
     #[display(fmt = "adding points worth to buzzed in player")]

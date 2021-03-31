@@ -2,14 +2,15 @@
     import { state } from './stores';
     import { socket } from './utils';
 
-    const nJPointValues = [200, 400, 600,  800,  1000];
+    export let pointValuesIndex = 0;
+
+    const sJPointValues = [200, 400, 600,  800,  1000];
     const dJPointValues = [400, 800, 1200, 1600, 2000];
-    let pointValuesIndex = 0;
     let inDj = false;
 
     $: pointsWorth = inDj
         ? dJPointValues[pointValuesIndex]
-        : nJPointValues[pointValuesIndex];
+        : sJPointValues[pointValuesIndex];
 
     $: socket.send(JSON.stringify({
         action: "SetPtsWorth",
@@ -68,6 +69,20 @@
             decrementPointsWorth();
         }
     });
+
+    let timeoutID: number;
+
+    $: if ($state.buzzer.state === "Open") {
+        timeoutID = window.setTimeout(function() {
+            for (var p of Object.entries($state.scores)) {
+                p[1].blocked = false;
+            }
+            $state.buzzer.state = "Closed"
+            incrementPointsWorth();
+        }, 5000);
+    } else {
+        window.clearTimeout(timeoutID);
+    }
 </script>
 
 <hr/>
@@ -77,7 +92,7 @@ points worth:
 <!-- svelte-ignore a11y-no-onchange -->
 <select type="number"
         bind:value={pointsWorth}>
-    {#each (inDj ? dJPointValues : nJPointValues) as p}
+    {#each (inDj ? dJPointValues : sJPointValues) as p}
         <option>{p}</option>
     {/each}
 </select>

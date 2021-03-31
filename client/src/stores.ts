@@ -8,6 +8,8 @@ export const amHost     = writable<boolean>(false);
 export const inHistory  = writable<boolean>(false);
 export const inSetup    = writable<boolean>(true);
 export const serverDown = writable<boolean>(false);
+export const closeMsg   = writable<string>("");
+export const closeCode  = writable<number>(0);
 
 export const state = writable<State>({
     buzzer: { state: "Closed", owner: null },
