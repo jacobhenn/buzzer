@@ -11,6 +11,7 @@ use log::{info, trace, warn};
 use serde_json;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
+use std::fmt;
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(10);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(15);
@@ -19,9 +20,18 @@ pub struct Connection {
     pub last_beat: Instant,
     pub state: Addr<State>,
     pub id: Uuid,
+    pub players: Vec<String>,
 }
 
 impl Connection {
+    pub fn identify(&self) -> String {
+        if self.players.len() != 0 {
+            self.players.join(" & ")
+        } else {
+            self.id.to_string()
+        }
+    }
+
     fn beat_heart(&mut self) {
         self.last_beat = Instant::now();
     }
@@ -29,11 +39,11 @@ impl Connection {
     fn start_beat(&self, ctx: &mut <Self as Actor>::Context) {
         ctx.run_interval(HEARTBEAT_INTERVAL, |act, ctx| {
             if Instant::now().duration_since(act.last_beat) > CLIENT_TIMEOUT {
-                warn!("{} timed out, disconnecting", act.id);
+                warn!("{} timed out, disconnecting", act.identify());
                 act.state.do_send(Disconnect(act.id));
                 ctx.stop();
             } else {
-                trace!("pinging {}", act.id);
+                trace!("pinging {}", act.identify());
                 ctx.ping(b"");
             }
         });
@@ -45,7 +55,7 @@ impl Actor for Connection {
 
     // Register a new client and send them the current state
     fn started(&mut self, ctx: &mut Self::Context) {
-        info!("a new client is connecting as {}", self.id);
+        info!("a new client is connecting as {}", self.identify());
         let tx = ctx.address().recipient();
         self.state.do_send(Connect(self.id, tx));
         self.start_beat(ctx);
@@ -64,10 +74,13 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for Connection {
 
                 match cmd_res {
                     Ok(cmd) => {
+                        if let Command::AddPlayer { ref name } = cmd {
+                            self.players.push(name.to_string());
+                        }
                         self.state.do_send(cmd);
                     }
                     Err(e) => {
-                        warn!("recieved invalid data from {} ({})", self.id, e);
+                        warn!("recieved invalid data from {} ({})", self.identify(), e);
                         ctx.close(Some(CloseReason {
                             code: CloseCode::Protocol,
                             description: Some(format!("{}", e)),
@@ -79,7 +92,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for Connection {
             Ok(ws::Message::Binary(_)) => {
                 info!(
                     "recieved unsuppourted data from {}, closing socket...",
-                    self.id,
+                    self.identify(),
                 );
                 ctx.close(Some(CloseReason {
                     code: CloseCode::Unsupported,
@@ -90,7 +103,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for Connection {
             Ok(ws::Message::Continuation(_)) => {
                 info!(
                     "recieved a continuation frame from {}, closing socket...",
-                    self.id,
+                    self.identify(),
                 );
                 ctx.close(Some(CloseReason {
                     code: CloseCode::Size,
@@ -109,18 +122,18 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for Connection {
                 if let Some(CloseReason { code, description }) = reason {
                     info!(
                         "{} closed their connection: {}",
-                        self.id,
+                        self.identify(),
                         description.unwrap_or(format!("{:?}", code)),
                     );
                 } else {
-                    info!("{} has closed for an unknown reason", self.id);
+                    info!("{} has closed for an unknown reason", self.identify());
                 }
             }
             Ok(ws::Message::Nop) => (),
             Err(e) => {
                 warn!(
                     "protocol error in a frame from {}: {}, closing socket...",
-                    self.id, e
+                    self.identify(), e
                 );
             }
         }

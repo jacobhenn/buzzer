@@ -56,6 +56,7 @@ async fn socket(
         last_beat: Instant::now(),
         state: data_ref.clone(),
         id: Uuid::new_v4(),
+        players: Vec::new(),
     };
 
     debug!("connecting to new client at {}...", conn.id);
