@@ -74,13 +74,15 @@
 
     $: if ($state.buzzer.state === "Open") {
         timeoutID = window.setTimeout(function() {
+            console.log("ending round due to timeout");
             for (var p of Object.entries($state.scores)) {
                 p[1].blocked = false;
             }
-            $state.buzzer.state = "Closed"
+            $state.buzzer.state = "Closed";
             incrementPointsWorth();
         }, 5000);
     } else {
+        console.log("clearing timeout");
         window.clearTimeout(timeoutID);
     }
 </script>

@@ -25,6 +25,10 @@
         }, ...$state.history];
     }
 
+    let timeoutID: number;
+
+    let pointValuesIndex = 0;
+
     socket.onmessage = function(event) {
         let cmd = JSON.parse(event.data);
         let a = cmd.action;
@@ -39,6 +43,7 @@
                 p[1].blocked = false;
             }
             $state.buzzer.state = "Closed"
+            window.clearTimeout(timeoutID);
         } else if (a === "OpenBuzzer") {
             // If everyone's blocked, OpenBuzzer closes the buzzer instead.
             if (Object.values($state.scores).every(p => p.blocked)) {
@@ -47,6 +52,15 @@
             } else {
                 $state.buzzer.state = "Open";
             }
+            timeoutID = window.setTimeout(function() {
+                console.log("ending round due to timeout");
+                for (var p of Object.entries($state.scores)) {
+                    p[1].blocked = false;
+                }
+                $state.buzzer.state = "Closed";
+                pointValuesIndex++;
+                pointValuesIndex %= 5;
+            }, 5000);
         } else if (a === "AddPlayer") {
             // If the history contains a prior score for this player, use
             // that score instead of 0.
@@ -112,6 +126,7 @@
         } else if (a === "Buzz") {
             $state.scores[cmd.name].blocked = true;
             $state.buzzer = { state: "TakenBy", owner: cmd.name };
+            window.clearTimeout(timeoutID);
         }
     }
 
@@ -153,6 +168,9 @@
             }
         }
     }
+
+
+
 </script>
 
 <svelte:window on:mousedown={clickBuzz} on:keydown={keyBuzz} on:touchstart={clickBuzz}/>
@@ -163,7 +181,7 @@
     <DisplayBuzzer/>
     <SelectBuzzKeys/>
     {#if $amHost}
-        <HostUtils/>
+        <HostUtils {pointValuesIndex}/>
     {/if}
     {#if $inHistory}
         <DisplayHistory/>
@@ -172,7 +190,7 @@
     {/if}
 {/if}
 
-<div id="footer">v5.1.0</div>
+<div id="footer">v5.1.2</div>
 
 <style>
     #footer {
