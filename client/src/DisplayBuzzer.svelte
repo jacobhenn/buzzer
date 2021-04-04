@@ -2,6 +2,17 @@
     import { closeMsg, closeCode, serverDown, contestants, state, amHost } from './stores';
 
     $: ownerHere = $contestants.some(c => c.name === $state.buzzer.owner);
+
+    function formatCloseCode(code: number): string {
+        if (code === 1000) return "normal"
+        else if (code === 1001) return "away"
+        else if (code === 1002) return "protocol"
+        else if (code === 1003) return "unsuppourted data"
+        else if (code === 1006) return "server shut down"
+        else if (code === 1008) return "policy"
+        else if (code === 1009) return "size"
+        else return "unknown close code"
+    }
 </script>
 
 <div id="topbar"
@@ -13,7 +24,8 @@
     class:serverDown={$serverDown}
     class={$state.buzzer.state}>
     {#if $serverDown}
-        the server has closed the connection ({$closeCode})
+        the server has closed the connection
+        ({formatCloseCode($closeCode)})<br/>
         {$closeMsg}
     {:else if $state.buzzer.state === "Closed"}
         the buzzer is closed

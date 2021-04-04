@@ -1,13 +1,11 @@
 use crate::command::Command;
 use actix::Message;
 use chrono::{Local, Timelike};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use log::{debug, error, LevelFilter};
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
 use std::fmt;
-
-const TIMER_LENGTH: Duration = Duration::from_secs(5);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Wrapper around a serialized command which can be passed to a Connection
@@ -71,14 +69,6 @@ impl Buzzer {
 
     pub fn take(&mut self, name: String) {
         *self = Self::TakenBy { owner: name };
-    }
-
-    pub fn check_timer(&mut self) {
-        if let Self::Open { opened } = self {
-            if opened.elapsed() >= TIMER_LENGTH {
-                self.close();
-            }
-        }
     }
 }
 

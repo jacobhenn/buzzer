@@ -190,7 +190,7 @@
     {/if}
 {/if}
 
-<div id="footer">v5.1.2</div>
+<div id="footer">v5.1.3</div>
 
 <style>
     #footer {

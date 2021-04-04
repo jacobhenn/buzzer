@@ -5,6 +5,9 @@ use actix::{Actor, Addr, Context, Handler, Message};
 use log::{debug, info, warn};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::time::Duration;
+
+const TIMER_LENGTH: Duration = Duration::from_secs(5);
 
 ////////////////////////////////////////////////////////////////////////////////
 // State contains a Buzzer, a list of players' scores (along with whether or not
@@ -76,6 +79,14 @@ impl Handler<Disconnect> for State {
 }
 
 impl State {
+    pub fn check_timer(&mut self) {
+        if let Buzzer::Open { opened } = self.buzzer {
+            if opened.elapsed() >= TIMER_LENGTH {
+                self.buzzer.close();
+            }
+        }
+    }
+
     // Takes a Command and a mutable reference to the state and applies the command
     // to the state. Returns None if a nonexistant player was named or the command
     // was OwnerCorrect and the buzzer wasn't TakenBy anyone.
@@ -97,6 +108,13 @@ impl State {
                 Some(())
             }
             Command::OpenBuzzer => {
+                // if the buzzer closed due to a timeout, make sure to unblock everyone
+                if let Buzzer::Open { opened } = self.buzzer {
+                    if opened.elapsed() >= TIMER_LENGTH {
+                        self.scores.values_mut().for_each(|p| p.blocked = false);
+                    }
+                }
+
                 // If everyone's blocked, OpenBuzzer closes the buzzer instead.
                 if self.scores.values().all(|p| p.blocked) {
                     self.buzzer.close();
@@ -203,7 +221,7 @@ impl State {
                     return None;
                 }
 
-                self.buzzer.check_timer();
+                self.check_timer();
                 match &self.buzzer {
                     Buzzer::TakenBy { owner } => {
                         info!(" -> but {} already buzzed in!", owner);

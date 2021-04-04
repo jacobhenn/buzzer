@@ -11,7 +11,6 @@ use log::{info, trace, warn};
 use serde_json;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
-use std::fmt;
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(10);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(15);
