@@ -62,6 +62,7 @@ impl Handler<Connect> for State {
 
         // Send the current state to the connected player
         let Connect(_, socket) = msg;
+        self.check_timer();
         let cmd = Command::SetState {
             state: self.clone(),
         };
@@ -83,6 +84,7 @@ impl State {
         if let Buzzer::Open { opened } = self.buzzer {
             if opened.elapsed() >= TIMER_LENGTH {
                 self.buzzer.close();
+                self.scores.values_mut().for_each(|p| p.blocked = false);
             }
         }
     }
@@ -215,13 +217,14 @@ impl State {
                 None
             }
             Command::Buzz { name } => {
-                let p = self.scores.get(&name)?;
+                self.check_timer();
+
+                let p = self.scores.get_mut(&name)?;
                 if p.blocked {
                     info!(" -> but they are blocked!");
                     return None;
                 }
 
-                self.check_timer();
                 match &self.buzzer {
                     Buzzer::TakenBy { owner } => {
                         info!(" -> but {} already buzzed in!", owner);
@@ -233,7 +236,7 @@ impl State {
                     }
                     Buzzer::Open { .. } => {
                         info!(" -> they succeeded!");
-                        self.scores.get_mut(&name).map(|p| p.blocked = true);
+                        p.blocked = true;
                         self.buzzer.take(name);
                         Some(())
                     }

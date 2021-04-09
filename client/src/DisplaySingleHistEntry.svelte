@@ -38,7 +38,7 @@
            bind:value={thisScoreString}
            on:blur={updateServerHistEntry}
            on:keydown={handleKeydown}/>
-    <button class="x"
+    <button class="remove"
             on:mousedown={removeHistEntry}>🞬</button>
 {:else}
     {thisScore}
@@ -47,5 +47,15 @@
 <style>
     span.time {
         color: #4c566a;
+    }
+
+    button.remove {
+        color: #bf616a;
+        background-color: #2e3440;
+        margin: 0px;
+    }
+
+    input.hidden {
+        margin: 0px;
     }
 </style>

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 ////////////////////////////////////////////////////////////////////////////////
 // Command represents an instruction by Host to change the State
 // Commands can be deserialized from a JSON request
-#[derive(Clone, Serialize, Deserialize, Debug, Display)]
+#[derive(Debug, Clone, Serialize, Deserialize, Display)]
 #[serde(tag = "action")]
 #[derive(Message)]
 #[rtype(result = "()")]
@@ -32,7 +32,7 @@ pub enum Command {
     #[display(fmt = "adding points worth to buzzed in player")]
     OwnerCorrect,
     // This command should only ever be sent to a client.
-    #[display(fmt = "Set the state")]
+    #[display(fmt = "set the state")]
     #[serde(skip_deserializing)]
     SetState { state: State },
     #[display(fmt = "{} is attempting to buzz in", name)]

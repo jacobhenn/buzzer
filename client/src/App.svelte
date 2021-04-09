@@ -53,7 +53,6 @@
                 $state.buzzer.state = "Open";
             }
             timeoutID = window.setTimeout(function() {
-                console.log("ending round due to timeout");
                 for (var p of Object.entries($state.scores)) {
                     p[1].blocked = false;
                 }
@@ -123,6 +122,12 @@
             $state.buzzer.state = "Closed";
         } else if (a === "SetState") {
             $state = cmd.state;
+            const d = new Date();
+            const o = -d.getTimezoneOffset() / 60;
+            for (let e of $state.history) {
+                e.time[0] += o;
+                e.time[0] %= 24;
+            }
         } else if (a === "Buzz") {
             $state.scores[cmd.name].blocked = true;
             $state.buzzer = { state: "TakenBy", owner: cmd.name };
@@ -168,9 +173,6 @@
             }
         }
     }
-
-
-
 </script>
 
 <svelte:window on:mousedown={clickBuzz} on:keydown={keyBuzz} on:touchstart={clickBuzz}/>

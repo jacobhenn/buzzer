@@ -11,7 +11,7 @@
         else if (code === 1006) return "server shut down"
         else if (code === 1008) return "policy"
         else if (code === 1009) return "size"
-        else return "unknown close code"
+        else return code.toString()
     }
 </script>
 
