@@ -1,16 +1,14 @@
 <script lang="ts">
-    import { state } from './stores';
+    import { state, pointValuesIndex } from './stores';
     import { socket } from './utils';
-
-    export let pointValuesIndex = 0;
 
     const sJPointValues = [200, 400, 600,  800,  1000];
     const dJPointValues = [400, 800, 1200, 1600, 2000];
     let inDj = false;
 
     $: pointsWorth = inDj
-        ? dJPointValues[pointValuesIndex]
-        : sJPointValues[pointValuesIndex];
+        ? dJPointValues[$pointValuesIndex]
+        : sJPointValues[$pointValuesIndex];
 
     $: socket.send(JSON.stringify({
         action: "SetPtsWorth",
@@ -18,12 +16,12 @@
     }));
 
     function incrementPointsWorth(): void {
-        pointValuesIndex++;
-        pointValuesIndex %= 5;
+        $pointValuesIndex++;
+        $pointValuesIndex %= 5;
     }
 
     function decrementPointsWorth(): void {
-        pointValuesIndex--;
+        $pointValuesIndex--;
     }
 
     function endRound(): void {
@@ -41,9 +39,9 @@
     }
 
     function openBuzzer(): void {
-        if (Object.entries($state.scores).every(c => c[1].blocked)) {
-            incrementPointsWorth();
-        }
+        // if (Object.entries($state.scores).every(c => c[1].blocked)) {
+        //     incrementPointsWorth();
+        // }
         socket.send(JSON.stringify({
             action: "OpenBuzzer"
         }));
@@ -62,10 +60,10 @@
             openBuzzer();
         } else if (event.key === "d") {
             inDj = !inDj;
-            pointValuesIndex = 0;
-        } else if (event.key === "+" && pointValuesIndex < 4) {
+            $pointValuesIndex = 0;
+        } else if (event.key === "+" && $pointValuesIndex < 4) {
             incrementPointsWorth();
-        } else if (event.key === "-" && pointValuesIndex > 0) {
+        } else if (event.key === "-" && $pointValuesIndex > 0) {
             decrementPointsWorth();
         }
     });
@@ -84,12 +82,12 @@ points worth:
 </select>
 
 <button on:mousedown={incrementPointsWorth}
-        disabled={pointValuesIndex > 3}><u>+</u></button>
+        disabled={$pointValuesIndex > 3}><u>+</u></button>
 <button on:mousedown={decrementPointsWorth}
-        disabled={pointValuesIndex < 1}><u>-</u></button>
+        disabled={$pointValuesIndex < 1}><u>-</u></button>
 
 <br/>
-<button on:mousedown={() => { inDj = !inDj; pointValuesIndex = 0; }}>
+<button on:mousedown={() => { inDj = !inDj; $pointValuesIndex = 0; }}>
     {inDj ? "☑" : "☐"}
     <u>d</u>ouble Jeopardy!
 </button>

@@ -1,6 +1,6 @@
 <script lang="ts">
     import {
-        state, inSetup, contestants, amHost,
+        state, inSetup, contestants, amHost, pointValuesIndex,
         serverDown, inHistory, closeMsg, closeCode
     } from './stores';
 
@@ -26,8 +26,6 @@
     }
 
     let timeoutID: number;
-
-    let pointValuesIndex = 0;
 
     socket.onmessage = function(event) {
         let cmd = JSON.parse(event.data);
@@ -57,8 +55,8 @@
                     p[1].blocked = false;
                 }
                 $state.buzzer.state = "Closed";
-                pointValuesIndex++;
-                pointValuesIndex %= 5;
+                $pointValuesIndex++;
+                $pointValuesIndex %= 5;
             }, 5000);
         } else if (a === "AddPlayer") {
             // If the history contains a prior score for this player, use
@@ -183,7 +181,7 @@
     <DisplayBuzzer/>
     <SelectBuzzKeys/>
     {#if $amHost}
-        <HostUtils {pointValuesIndex}/>
+        <HostUtils/>
     {/if}
     {#if $inHistory}
         <DisplayHistory/>
@@ -192,7 +190,7 @@
     {/if}
 {/if}
 
-<div id="footer">v5.1.3</div>
+<div id="footer">v5.1.4</div>
 
 <style>
     #footer {
