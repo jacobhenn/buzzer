@@ -65,5 +65,6 @@
         color: #bf616a;
         background-color: #2e3440;
         margin: 0px;
+        padding: 0px;
     }
 </style>

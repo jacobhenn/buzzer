@@ -1,11 +1,10 @@
 use crate::command::Command;
 use actix::Message;
-use chrono::{Local, Timelike};
+use chrono::{Utc, Timelike};
 use std::time::Instant;
-use log::{debug, error, LevelFilter};
+use log::{error, LevelFilter};
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
-use std::fmt;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Wrapper around a serialized command which can be passed to a Connection
@@ -77,37 +76,19 @@ impl Buzzer {
 pub struct HistEntry {
     pub time: (u8, u8), // HH:MM
     pub name: String,
-    pub score: i32,
-}
-
-impl fmt::Display for HistEntry {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "[history] {:02}:{:02} - {}: {}",
-            self.time.0, self.time.1, self.name, self.score
-        )
-    }
+    pub delta: i32,
 }
 
 pub trait History {
     fn log(&mut self, name: String, score: i32);
-    fn print(&self);
 }
 
 impl History for Vec<HistEntry> {
-    fn log(&mut self, name: String, score: i32) {
-        // if self.iter().any(|e| e.name == name && e.score == score) {
-        //     return;
-        // }
-        let now = Local::now().time();
-        let time = (now.hour() as u8, now.minute() as u8);
-        self.insert(0, HistEntry { time, name, score });
-    }
-
-    fn print(&self) {
-        for entry in self {
-            debug!("{}", entry);
+    fn log(&mut self, name: String, delta: i32) {
+        if delta != 0 {
+            let now = Utc::now().time();
+            let time = (now.hour() as u8, now.minute() as u8);
+            self.insert(0, HistEntry { time, name, delta });
         }
     }
 }

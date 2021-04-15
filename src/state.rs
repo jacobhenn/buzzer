@@ -57,6 +57,7 @@ impl Handler<Command> for State {
 
 impl Handler<Connect> for State {
     type Result = ();
+
     fn handle(&mut self, msg: Connect, _: &mut Context<Self>) {
         self.registry.do_send(msg.clone());
 
@@ -74,6 +75,7 @@ impl Handler<Connect> for State {
 
 impl Handler<Disconnect> for State {
     type Result = ();
+
     fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) {
         self.registry.do_send(msg);
     }
@@ -99,15 +101,13 @@ impl State {
         match cmd {
             Command::SetScore { name, score } => {
                 let p = self.scores.get_mut(&name)?;
+                self.history.log(name, score - p.score);
                 p.score = score;
-                self.history.log(name, score);
-                Some(())
             }
             Command::EndRound => {
                 // Unblock everyone.
                 self.scores.values_mut().for_each(|p| p.blocked = false);
                 self.buzzer.close();
-                Some(())
             }
             Command::OpenBuzzer => {
                 // if the buzzer closed due to a timeout, make sure to unblock everyone
@@ -124,97 +124,51 @@ impl State {
                 } else {
                     self.buzzer.open();
                 }
-                Some(())
             }
             Command::AddPlayer { name } => {
-                // If the history contains a prior score for this player, use
-                // that score instead of 0.
-                let score = self
-                    .history
-                    .iter()
-                    .find(|e| e.name == name)
-                    .map(|e| e.score)
-                    .unwrap_or_default();
-                self.scores.insert(
-                    name.clone(),
-                    Player {
-                        score,
-                        blocked: false,
-                    },
-                );
-                self.history.log(name, score);
-                Some(())
+                self.scores.insert(name, Player { score: 0, blocked: false, });
             }
             Command::RemovePlayer { name } => {
                 self.scores.remove(&name)?;
-                Some(())
             }
-            Command::Unblock { name } => self.scores.get_mut(&name).map(|p| p.blocked = false),
-            Command::EditHistory { index: i, score } => {
-                let e = self.history.get(i)?;
+            Command::Unblock { name } => self.scores.get_mut(&name).map(|p| p.blocked = false)?,
+            Command::EditHistory { index, delta } => {
+                let e = self.history.get_mut(index)?;
                 // How much did we add to/subtract from this player's score?
-                let diff: i32 = score - e.score;
+                let diff = delta - e.delta;
+                e.delta = delta;
 
                 // Add that diff to the current score of this player
                 let p = self.scores.get_mut(&e.name)?;
                 p.score += diff;
-
-                // Add that diff to all this player's later history entries
-                let name = e.name.clone();
-                self.history
-                    .iter_mut()
-                    .take(i + 1)
-                    .filter(|x| x.name == name)
-                    .for_each(|x| x.score += diff);
-                Some(())
             }
-            Command::RemoveHistory { index: i } => {
-                let e = self.history.get(i)?;
-                let name = e.name.clone();
-                let score = e.score;
-                // What was the last history entry of this player before the
-                // one we are deleting? If none, 0.
-                let prev_score = self
-                    .history
-                    .iter()
-                    .skip(i + 1)
-                    .find(|e| e.name == name)
-                    .map(|e| e.score)
-                    .unwrap_or_default();
-                let diff = score - prev_score;
+            Command::RemoveHistory { index } => {
+                let e = self.history.get(index)?;
 
-                let p = self.scores.get_mut(&name)?;
-                p.score -= diff;
+                let p = self.scores.get_mut(&e.name)?;
+                p.score -= e.delta;
 
-                self.history.remove(i);
-                self.history
-                    .iter_mut()
-                    .take(i)
-                    .filter(|x| x.name == name)
-                    .for_each(|x| x.score -= diff);
-                Some(())
+                self.history.remove(index);
             }
             Command::SetPtsWorth { pts } => {
                 self.ptsworth = pts;
-                Some(())
             }
             Command::OwnerCorrect => {
                 if let Buzzer::TakenBy { owner } = &self.buzzer {
                     info!(" -> adding {} to {}", self.ptsworth, owner);
                     let p = self.scores.get_mut(owner)?;
                     p.score += self.ptsworth;
-                    self.history.log(owner.to_string(), p.score);
+                    self.history.log(owner.to_string(), self.ptsworth);
                     self.scores.values_mut().for_each(|p| p.blocked = false);
                     self.buzzer.close();
-                    Some(())
                 } else {
                     info!(" -> but there is no owner!");
-                    None
+                    None?;
                 }
             }
             Command::SetState { .. } => {
                 warn!(" -> SetState should only ever be sent to a client");
-                None
+                None?;
             }
             Command::Buzz { name } => {
                 self.check_timer();
@@ -222,26 +176,27 @@ impl State {
                 let p = self.scores.get_mut(&name)?;
                 if p.blocked {
                     info!(" -> but they are blocked!");
-                    return None;
+                    None?;
                 }
 
                 match &self.buzzer {
                     Buzzer::TakenBy { owner } => {
                         info!(" -> but {} already buzzed in!", owner);
-                        None
+                        None?;
                     }
                     Buzzer::Closed => {
                         info!(" -> but the buzzer is closed!");
-                        None
+                        None?;
                     }
                     Buzzer::Open { .. } => {
                         info!(" -> they succeeded!");
                         p.blocked = true;
                         self.buzzer.take(name);
-                        Some(())
                     }
                 }
             }
         }
+
+        Some(())
     }
 }

@@ -23,8 +23,8 @@ pub enum Command {
     AddPlayer { name: String },
     #[display(fmt = "unblocking {}", name)]
     Unblock { name: String },
-    #[display(fmt = "changing history entry #{} to {} points", index, score)]
-    EditHistory { index: usize, score: i32 },
+    #[display(fmt = "changing history entry #{} to {} points", index, delta)]
+    EditHistory { index: usize, delta: i32 },
     #[display(fmt = "removing history entry #{}", index)]
     RemoveHistory { index: usize },
     #[display(fmt = "setting points worth to {}", pts)]

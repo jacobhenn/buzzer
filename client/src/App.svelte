@@ -4,7 +4,7 @@
         serverDown, inHistory, closeMsg, closeCode
     } from './stores';
 
-    import { range, socket } from './utils';
+    import { socket } from './utils';
 
     import type { Contestant } from './types';
 
@@ -21,7 +21,7 @@
         $state.history = [{
             time: [d.getHours(), d.getMinutes()],
             name: n,
-            score: s
+            delta: s
         }, ...$state.history];
     }
 
@@ -33,9 +33,8 @@
 
         if (a === "SetScore") {
             let p = $state.scores[cmd.name];
+            logHistory(cmd.name, cmd.score - p.score);
             p.score = cmd.score;
-            logHistory(cmd.name, p.score);
-            // $state.history = $state.history;
         } else if (a === "EndRound") {
             for (var p of Object.entries($state.scores)) {
                 p[1].blocked = false;
@@ -59,16 +58,7 @@
                 $pointValuesIndex %= 5;
             }, 5000);
         } else if (a === "AddPlayer") {
-            // If the history contains a prior score for this player, use
-            // that score instead of 0.
-            let entry = $state.history.find(e => e.name === cmd.name);
-            let score = entry === undefined ? 0 : entry.score;
-            $state.scores[cmd.name] = {
-                score: score,
-                blocked: false
-            };
-            logHistory(cmd.name, score);
-            // $state.history = $state.history;
+            $state.scores[cmd.name] = {score: 0, blocked: false};
         } else if (a === "RemovePlayer") {
             delete $state.scores[cmd.name];
             $state.scores = $state.scores;
@@ -77,51 +67,30 @@
         } else if (a === "EditHistory") {
             let e = $state.history[cmd.index];
             // How much did we add to/subtract from this player's score?
-            let diff: number = cmd.score - e.score;
+            let diff = cmd.delta - e.delta;
+            e.delta = cmd.delta;
 
             // Add that diff to the current score of this player
             $state.scores[e.name].score += diff;
-
-            // Add that diff to all this player's later history entries
-            for (const i of range(0, cmd.index)) {
-                if ($state.history[i].name === e.name) {
-                    $state.history[i].score += diff;
-                }
-            }
         } else if (a === "RemoveHistory") {
             let e = $state.history[cmd.index];
-            // What was the last history entry of this player before the
-            // one we are deleting? If none, 0.
-            let prevScore = $state.history
-                .slice(cmd.index+1)
-                .find(x => x.name === e.name)
-                .score;
-            if (prevScore === undefined) prevScore = 0;
-            let diff = e.score - prevScore;
 
-            $state.scores[e.name].score -= diff;
+            $state.scores[e.name].score -= e.delta;
 
             $state.history.splice(cmd.index, 1);
             $state.history = $state.history;
-
-            for (const i of range(0, cmd.index-1)) {
-                if ($state.history[i].name === e.name) {
-                    $state.history[i].score -= diff;
-                }
-            }
         } else if (a === "SetPtsWorth") {
             $state.ptsworth = cmd.pts;
         } else if (a === "OwnerCorrect") {
             let p = $state.scores[$state.buzzer.owner];
             p.score += $state.ptsworth;
-            logHistory($state.buzzer.owner, p.score);
-            // $state.history = $state.history;
+            logHistory($state.buzzer.owner, $state.ptsworth);
             Object.values($state.scores).map(p => p.blocked = false);
             $state.buzzer.state = "Closed";
         } else if (a === "SetState") {
             $state = cmd.state;
             const d = new Date();
-            const o = -d.getTimezoneOffset() / 60;
+            const o = d.getTimezoneOffset() / 60;
             for (let e of $state.history) {
                 e.time[0] += o;
                 e.time[0] %= 24;
@@ -190,7 +159,7 @@
     {/if}
 {/if}
 
-<div id="footer">v5.1.4</div>
+<div id="footer">v5.2.0</div>
 
 <style>
     #footer {
