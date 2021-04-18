@@ -62,6 +62,10 @@ impl Actor for Connection {
 
     fn stopped(&mut self, _ctx: &mut Self::Context) {
         self.state.do_send(Disconnect(self.id));
+
+        for player in &self.players {
+            self.state.do_send(Command::RemovePlayer { name: player.to_string() });
+        }
     }
 }
 

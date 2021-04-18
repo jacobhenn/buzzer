@@ -2,7 +2,7 @@ import type { State, Contestant } from './types';
 import { writable } from 'svelte/store';
 
 export const contestants =
-    writable<Contestant[]>([{ name: "", buzzKey: "Space", }]);
+    writable<Contestant[]>([{ name: "", buzzKey: "Space", added: false, }]);
 
 export const amHost           = writable<boolean>(false);
 export const inHistory        = writable<boolean>(false);

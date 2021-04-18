@@ -62,6 +62,7 @@
         } else if (a === "RemovePlayer") {
             delete $state.scores[cmd.name];
             $state.scores = $state.scores;
+            $contestants = $contestants.filter(c => c.name !== cmd.name);
         } else if (a === "Unblock") {
             $state.scores[cmd.name].blocked = false;
         } else if (a === "EditHistory") {
@@ -147,6 +148,7 @@
 {#if $inSetup}
     <Setup/>
 {:else}
+    <button id="setup" on:click={() => $inSetup = true}>← setup</button>
     <DisplayBuzzer/>
     <SelectBuzzKeys/>
     {#if $amHost}
@@ -159,14 +161,21 @@
     {/if}
 {/if}
 
-<div id="footer">v5.2.0</div>
+<div id="footer">v5.3.0-dev.3</div>
 
 <style>
     #footer {
         color: #4c566a;
         font-size: 15pt;
         position: fixed;
-        bottom: 0;
-        right: 0;
+        bottom: 0px;
+        right: 0px;
+    }
+
+    #setup {
+        font-size: 15pt;
+        position: fixed;
+        left: 0px;
+        top: 20px;
     }
 </style>

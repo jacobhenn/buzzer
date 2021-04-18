@@ -8,7 +8,7 @@
         else if (code === 1001) return "away"
         else if (code === 1002) return "protocol"
         else if (code === 1003) return "unsuppourted data"
-        else if (code === 1006) return "server shut down"
+        else if (code === 1006) return "abnormal"
         else if (code === 1008) return "policy"
         else if (code === 1009) return "size"
         else return code.toString()

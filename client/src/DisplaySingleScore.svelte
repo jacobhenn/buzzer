@@ -22,10 +22,13 @@
     $: style = `color:#${thisColor};font-weight:${fontWeight}`;
 
     function updateServerScore(): void {
+        let num = parseInt(thisScoreString);
+        if (isNaN(num)) return;
+
         socket.send(JSON.stringify({
             action: "SetScore",
             name: thisName,
-            score: parseInt(thisScoreString)
+            score: num
         }));
     }
 

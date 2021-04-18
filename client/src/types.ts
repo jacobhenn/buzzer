@@ -1,4 +1,4 @@
-export type Contestant = { name: string; buzzKey: string; };
+export type Contestant = { name: string; buzzKey: string; added: boolean; };
 
 export type Buzzer = { state: string; owner: string | null; };
 
