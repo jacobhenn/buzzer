@@ -1,6 +1,7 @@
 <script lang="ts">
-    import { state, amHost, inHistory } from './stores';
+    import { state, clientState, inHistory } from './stores';
     import { range } from './utils';
+    import { ClientState } from './types';
 
     import DisplaySingleHistEntry from './DisplaySingleHistEntry.svelte';
 
@@ -14,7 +15,7 @@
 </script>
 
 <hr/>
-{#if $amHost}
+{#if $clientState === ClientState.Host}
     <span class="header">score history (click to edit)</span><br/>
 {:else}
     <span class="header">score history</span><br/>

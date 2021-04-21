@@ -37,7 +37,7 @@ const DIR: &str = env!("CD");
 ////////////////////////////////////////////////////////////////////////////////
 // Full Server URI List:
 //     - "/": serves the svelte app
-//     - "/ws": websocket connection endpoints
+//     - "/ws": websocket connection endpoint
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -112,16 +112,18 @@ async fn go() -> Result<(), Box<dyn Error>> {
         );
     }
 
-    let state = web::Data::new(State::default().start());
+    let data = web::Data::new(State::default().start());
 
-    let address = cfg_res?.0.address;
-    return Ok(HttpServer::new(move || {
+    let (Config { address, .. }, _) = cfg_res?;
+    HttpServer::new(move || {
         App::new()
             .service(socket)
             .service(actix_files::Files::new("/", "./client/public/").index_file("index.html"))
-            .app_data(state.clone())
+            .app_data(data.clone())
     })
     .bind(address)?
     .run()
-    .await?);
+    .await?;
+
+    Ok(())
 }

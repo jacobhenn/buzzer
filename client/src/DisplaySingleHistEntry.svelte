@@ -1,6 +1,8 @@
 <script lang="ts">
     import { socket } from './utils';
-    import { amHost, state } from './stores';
+    import { clientState, state } from './stores';
+
+    import { ClientState } from './types';
 
     export let thisIndex: number;
 
@@ -33,7 +35,7 @@
     {$state.history[thisIndex].time[0].toString().padStart(2, "0")}:{$state.history[thisIndex].time[1].toString().padStart(2, "0")}
 </span>
 {$state.history[thisIndex].name}
-{#if $amHost}
+{#if $clientState === ClientState.Host}
     <input class="hidden"
            bind:value={thisDeltaString}
            on:blur={updateServerHistEntry}
@@ -41,7 +43,7 @@
     <button class="remove"
             on:mousedown={removeHistEntry}>🞬</button>
 {:else}
-    {(thisDelta<0?"":"+") + thisDelta}
+    {thisDeltaString} <!-- (thisDelta<0?"":"+") + thisDelta -->
 {/if}
 
 <style>

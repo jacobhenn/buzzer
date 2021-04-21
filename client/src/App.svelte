@@ -1,13 +1,13 @@
 <script lang="ts">
     import {
-        state, inSetup, contestants, amHost, pointValuesIndex,
-        serverDown, inHistory, closeMsg, closeCode
+        clientState, state, contestants, pointValuesIndex,
+        inHistory, closeMsg, closeCode
     } from './stores';
 
     import { socket } from './utils';
+    import { Contestant, ClientState } from './types';
 
-    import type { Contestant } from './types';
-
+    import CommandBuilder from './CommandBuilder.svelte';
     import DisplayHistory from './DisplayHistory.svelte';
     import SelectBuzzKeys from './SelectBuzzKeys.svelte';
     import DisplayBuzzer  from './DisplayBuzzer.svelte';
@@ -43,7 +43,8 @@
             window.clearTimeout(timeoutID);
         } else if (a === "OpenBuzzer") {
             // If everyone's blocked, OpenBuzzer closes the buzzer instead.
-            if (Object.values($state.scores).every(p => p.blocked)) {
+            let vals = Object.values($state.scores);
+            if (vals.length !== 0 && vals.every(p => p.blocked)) {
                 $state.buzzer.state = "Closed";
                 Object.values($state.scores).map(p => p.blocked = false);
             } else {
@@ -104,7 +105,7 @@
     }
 
     socket.onclose = function(e: CloseEvent) {
-        $serverDown = true;
+        $clientState = ClientState.Over;
         $closeMsg = e.reason;
         $closeCode = e.code;
     }
@@ -145,13 +146,22 @@
 
 <svelte:window on:mousedown={clickBuzz} on:keydown={keyBuzz} on:touchstart={clickBuzz}/>
 
-{#if $inSetup}
+{#if $clientState === ClientState.Setup}
     <Setup/>
-{:else}
-    <button id="setup" on:click={() => $inSetup = true}>← setup</button>
+{:else if $clientState === ClientState.Operator}
+    <button id="setup" on:click={() => $clientState = ClientState.Setup}>← setup</button>
+    <DisplayBuzzer/>
+    <CommandBuilder/>
+    {#if $inHistory}
+        <DisplayHistory/>
+    {:else}
+        <DisplayScores/>
+    {/if}
+{:else if $clientState !== ClientState.Over}
+    <button id="setup" on:click={() => $clientState = ClientState.Setup}>← setup</button>
     <DisplayBuzzer/>
     <SelectBuzzKeys/>
-    {#if $amHost}
+    {#if $clientState === ClientState.Host}
         <HostUtils/>
     {/if}
     {#if $inHistory}
@@ -159,9 +169,16 @@
     {:else}
         <DisplayScores/>
     {/if}
+{:else}
+    <DisplayBuzzer/>
+    {#if $inHistory}
+        <DisplayHistory/>
+    {:else}
+        <DisplayScores/>
+    {/if}
 {/if}
 
-<div id="footer">v5.3.0-dev.3</div>
+<div id="footer">v5.4.0</div>
 
 <style>
     #footer {
@@ -173,7 +190,7 @@
     }
 
     #setup {
-        font-size: 15pt;
+        font-size: 1.8vw;
         position: fixed;
         left: 0px;
         top: 20px;

@@ -1,5 +1,6 @@
 <script lang="ts">
-    import { state, amHost, inHistory } from './stores';
+    import { state, clientState, inHistory } from './stores';
+    import { ClientState } from './types';
     import DisplaySingleScore from './DisplaySingleScore.svelte';
 
     document.addEventListener("keydown", function(e) {
@@ -10,7 +11,7 @@
 </script>
 
 <hr/>
-{#if $amHost}
+{#if $clientState === ClientState.Host}
     <span class="header">scores (click to edit)</span><br/>
 {:else}
     <span class="header">scores</span><br/>

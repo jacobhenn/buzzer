@@ -1,5 +1,5 @@
 use crate::command::Command;
-use crate::registry::{Connect, Disconnect};
+use crate::registry::{Close, Connect, Disconnect};
 use crate::state::State;
 use crate::structs::CmdStr;
 use actix::{Actor, ActorContext, Addr, AsyncContext, Handler, StreamHandler};
@@ -8,7 +8,6 @@ use actix_web_actors::{
     ws::{CloseCode, CloseReason},
 };
 use log::{info, trace, warn};
-use serde_json;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 
@@ -24,10 +23,10 @@ pub struct Connection {
 
 impl Connection {
     pub fn identify(&self) -> String {
-        if self.players.len() != 0 {
-            self.players.join(" & ")
-        } else {
+        if self.players.is_empty() {
             self.id.to_string()
+        } else {
+            self.players.join(" & ")
         }
     }
 
@@ -35,7 +34,7 @@ impl Connection {
         self.last_beat = Instant::now();
     }
 
-    fn start_beat(&self, ctx: &mut <Self as Actor>::Context) {
+    fn start_beat(ctx: &mut <Self as Actor>::Context) {
         ctx.run_interval(HEARTBEAT_INTERVAL, |act, ctx| {
             if Instant::now().duration_since(act.last_beat) > CLIENT_TIMEOUT {
                 warn!("{} timed out, disconnecting", act.identify());
@@ -55,16 +54,16 @@ impl Actor for Connection {
     // Register a new client and send them the current state
     fn started(&mut self, ctx: &mut Self::Context) {
         info!("a new client is connecting as {}", self.identify());
-        let tx = ctx.address().recipient();
+        let tx = ctx.address();
         self.state.do_send(Connect(self.id, tx));
-        self.start_beat(ctx);
+        Self::start_beat(ctx);
     }
 
     fn stopped(&mut self, _ctx: &mut Self::Context) {
         self.state.do_send(Disconnect(self.id));
 
-        for player in &self.players {
-            self.state.do_send(Command::RemovePlayer { name: player.to_string() });
+        for name in &self.players {
+            self.state.do_send(Command::RemovePlayer { name: name.to_string() });
         }
     }
 }
@@ -77,6 +76,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for Connection {
 
                 match cmd_res {
                     Ok(cmd) => {
+                        trace!("{} sent command `{}`", self.identify(), cmd);
                         if let Command::AddPlayer { ref name } = cmd {
                             self.players.push(name.to_string());
                         }
@@ -136,7 +136,8 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for Connection {
             Err(e) => {
                 warn!(
                     "protocol error in a frame from {}: {}, closing socket...",
-                    self.identify(), e
+                    self.identify(),
+                    e
                 );
             }
         }
@@ -148,5 +149,14 @@ impl Handler<CmdStr> for Connection {
 
     fn handle(&mut self, CmdStr(msg): CmdStr, ctx: &mut Self::Context) {
         ctx.text(msg);
+    }
+}
+
+impl Handler<Close> for Connection {
+    type Result = ();
+
+    fn handle(&mut self, Close(reason): Close, ctx: &mut Self::Context) {
+        ctx.close(Some(reason));
+        ctx.stop();
     }
 }

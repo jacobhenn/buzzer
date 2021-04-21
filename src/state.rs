@@ -5,6 +5,7 @@ use actix::{Actor, Addr, Context, Handler, Message};
 use log::{debug, info, warn};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::fmt;
 use std::time::Duration;
 
 const TIMER_LENGTH: Duration = Duration::from_secs(5);
@@ -14,7 +15,7 @@ const TIMER_LENGTH: Duration = Duration::from_secs(5);
 // they're blocked, see `scorekeeper::Player`), and a random `u8` marker which
 // is randomly regenerated every time the state changes to inform the clients
 // to perform the "pull" phase of their polling.
-#[derive(Clone, Debug, Serialize, Message)]
+#[derive(Clone, Serialize, Message)]
 #[rtype(result = "")]
 pub struct State {
     pub buzzer: Buzzer,
@@ -23,6 +24,12 @@ pub struct State {
     #[serde(skip_serializing)]
     pub registry: Addr<Registry>,
     pub ptsworth: i32,
+}
+
+impl fmt::Debug for State {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(State cannot be printed with Debug)")
+    }
 }
 
 impl Default for State {
@@ -58,7 +65,7 @@ impl Handler<Command> for State {
 impl Handler<Connect> for State {
     type Result = ();
 
-    fn handle(&mut self, msg: Connect, _: &mut Context<Self>) {
+    fn handle(&mut self, msg: Connect, _ctx: &mut Context<Self>) {
         self.registry.do_send(msg.clone());
 
         // Send the current state to the connected player
@@ -67,8 +74,8 @@ impl Handler<Connect> for State {
         let cmd = Command::SetState {
             state: self.clone(),
         };
-        if let Ok(cmdstr) = CmdStr::new(cmd) {
-            socket.do_send(cmdstr).unwrap();
+        if let Ok(cmdstr) = CmdStr::new(&cmd) {
+            socket.do_send(cmdstr);
         }
     }
 }
@@ -76,7 +83,7 @@ impl Handler<Connect> for State {
 impl Handler<Disconnect> for State {
     type Result = ();
 
-    fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) {
+    fn handle(&mut self, msg: Disconnect, _ctx: &mut Context<Self>) {
         self.registry.do_send(msg);
     }
 }
@@ -126,12 +133,28 @@ impl State {
                 }
             }
             Command::AddPlayer { name } => {
-                self.scores.insert(name, Player { score: 0, blocked: false, });
+                let mut score = 0;
+                for entry in &self.history {
+                    if entry.player == name {
+                        score += entry.delta;
+                    }
+                }
+
+                self.scores.insert(
+                    name,
+                    Player {
+                        score,
+                        blocked: false,
+                    },
+                );
             }
             Command::RemovePlayer { name } => {
                 self.scores.remove(&name)?;
             }
-            Command::Unblock { name } => self.scores.get_mut(&name).map(|p| p.blocked = false)?,
+            Command::Unblock { name } => {
+                let p = self.scores.get_mut(&name)?;
+                p.blocked = false;
+            }
             Command::EditHistory { index, delta } => {
                 let e = self.history.get_mut(index)?;
                 // How much did we add to/subtract from this player's score?
@@ -139,13 +162,13 @@ impl State {
                 e.delta = delta;
 
                 // Add that diff to the current score of this player
-                let p = self.scores.get_mut(&e.name)?;
+                let p = self.scores.get_mut(&e.player)?;
                 p.score += diff;
             }
             Command::RemoveHistory { index } => {
                 let e = self.history.get(index)?;
 
-                let p = self.scores.get_mut(&e.name)?;
+                let p = self.scores.get_mut(&e.player)?;
                 p.score -= e.delta;
 
                 self.history.remove(index);
@@ -155,10 +178,10 @@ impl State {
             }
             Command::OwnerCorrect => {
                 if let Buzzer::TakenBy { owner } = &self.buzzer {
-                    info!(" -> adding {} to {}", self.ptsworth, owner);
                     let p = self.scores.get_mut(owner)?;
+                    info!(" -> adding {} to {}", self.ptsworth, owner);
                     p.score += self.ptsworth;
-                    self.history.log(owner.to_string(), self.ptsworth);
+                    self.history.log(owner.clone(), self.ptsworth);
                     self.scores.values_mut().for_each(|p| p.blocked = false);
                     self.buzzer.close();
                 } else {
@@ -173,7 +196,7 @@ impl State {
             Command::Buzz { name } => {
                 self.check_timer();
 
-                let p = self.scores.get_mut(&name)?;
+                let mut p = self.scores.get_mut(&name)?;
                 if p.blocked {
                     info!(" -> but they are blocked!");
                     None?;

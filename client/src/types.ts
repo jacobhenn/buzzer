@@ -12,3 +12,11 @@ export type State = {
     history: HistEntry[];
     ptsworth: number;
 };
+
+export enum ClientState {
+    Setup,
+    Contestant,
+    Host,
+    Operator,
+    Over,
+}

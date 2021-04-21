@@ -1,11 +1,12 @@
 <script lang="ts">
-    import { closeMsg, closeCode, serverDown, contestants, state, amHost } from './stores';
+    import { closeMsg, closeCode, contestants, state, clientState } from './stores';
+    import { ClientState } from './types';
 
     $: ownerHere = $contestants.some(c => c.name === $state.buzzer.owner);
 
     function formatCloseCode(code: number): string {
         if (code === 1000) return "normal"
-        else if (code === 1001) return "away"
+        else if (code === 1001) return "shut down"
         else if (code === 1002) return "protocol"
         else if (code === 1003) return "unsuppourted data"
         else if (code === 1006) return "abnormal"
@@ -17,13 +18,13 @@
 
 <div id="topbar"
     class:ownerHere
-    class:serverDown={$serverDown}
-    class={$state.buzzer.state}></div>
+    class={$state.buzzer.state}
+    class:serverDown={$clientState === ClientState.Over}></div>
 <div id="state"
     class:ownerHere
-    class:serverDown={$serverDown}
-    class={$state.buzzer.state}>
-    {#if $serverDown}
+    class={$state.buzzer.state}
+    class:serverDown={$clientState === ClientState.Over}>
+    {#if $clientState === ClientState.Over}
         the server has closed the connection
         ({formatCloseCode($closeCode)})<br/>
         {$closeMsg}
@@ -51,7 +52,7 @@
         <span style="color:#a3be8c">click or tap anywhere to buzz in</span>
     {/each}
 {/if}
-{#if !$amHost}
+{#if $clientState === ClientState.Contestant || $clientState === ClientState.Operator}
     <br/>
     <span id="ptsworth">
         for <strong>{$state.ptsworth}</strong> points
@@ -67,10 +68,6 @@
         transition: 0s;
     }
 
-    #topbar.serverDown {
-        background-color: #d08770;
-    }
-
     #topbar.Open {
         background-color: #a3be8c;
         width: 0%;
@@ -83,13 +80,14 @@
         background-color: #88c0d0;
     }
 
+    #topbar.serverDown {
+        background-color: #b48ead;
+        width: 100%;
+    }
+
     #state {
         font-weight: bold;
         margin-top: 20px;
-    }
-
-    #state.serverDown {
-        color: #d08770;
     }
 
     #state.Open {
@@ -100,5 +98,9 @@
         color: #bf616a;
     } #state.TakenBy.ownerHere {
         color: #88c0d0;
+    }
+
+    #state.serverDown {
+        color: #b48ead;
     }
 </style>

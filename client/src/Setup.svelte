@@ -1,6 +1,10 @@
 <script lang="ts">
-    import { contestants, amHost, inSetup, state } from './stores';
+    import { contestants, clientState, state } from './stores';
     import { socket, buzzKeys } from './utils';
+
+    import { ClientState } from './types';
+
+    let amHost = false;
 
     let buzzKeyIndex = $contestants.length;
 
@@ -52,7 +56,7 @@
             }
         };
 
-        $inSetup = false;
+        $clientState = amHost ? ClientState.Host : ClientState.Contestant;
     }
 
     $: externDups = $contestants.filter(c => Object.entries($state.scores)
@@ -83,14 +87,19 @@ contestant(s), enter your name(s)<br/>
 
 <hr/>
 does this device need host access?<br/>
-<button on:mousedown={() => $amHost = !$amHost}>
-    {$amHost ? "☑" : "☐"}
+<button on:mousedown={() => amHost = !amHost}>
+    {amHost ? "☑" : "☐"}
     host access
 </button>
 
 <hr/>
 <button class="large" on:mousedown={play}
         disabled={externDups.length > 0}>play</button>
+
+<button id="operator" on:mousedown={() => {
+    $contestants = [];
+    $clientState = ClientState.Operator;
+}}>operator</button>
 
 <style>
     .dup {
@@ -102,5 +111,17 @@ does this device need host access?<br/>
         background-color: #2e3440;
         margin: 0px;
         padding: 0px;
+    }
+
+    button#operator {
+        opacity: 0;
+        font-size: 15pt;
+        position: fixed;
+        bottom: 0px;
+        left: 0px;
+    }
+
+    button#operator:hover {
+        opacity: 1;
     }
 </style>

@@ -1,6 +1,7 @@
 <script lang="ts">
     import { socket } from './utils';
-    import { amHost, state, contestants } from './stores';
+    import { clientState, state, contestants } from './stores';
+    import { ClientState } from './types';
 
     export let thisName: string;
     export let thisScore: number;
@@ -49,7 +50,7 @@
 <span {style}>
     {thisName}:
 </span>
-{#if $amHost}
+{#if $clientState === ClientState.Host}
     <input class="hidden"
            bind:value={thisScoreString}
            on:focusout={updateServerScore}

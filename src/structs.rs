@@ -1,20 +1,20 @@
 use crate::command::Command;
 use actix::Message;
-use chrono::{Utc, Timelike};
-use std::time::Instant;
+use chrono::{Timelike, Utc};
 use log::{error, LevelFilter};
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
+use std::time::Instant;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Wrapper around a serialized command which can be passed to a Connection
-#[derive(Clone, Message)]
+#[derive(Debug, Clone, Message)]
 #[rtype(result = "()")]
 pub struct CmdStr(pub String);
 
 impl CmdStr {
-    pub fn new(cmd: Command) -> Result<Self> {
-        let json_res = serde_json::to_string(&cmd);
+    pub fn new(cmd: &Command) -> Result<Self> {
+        let json_res = serde_json::to_string(cmd);
         match json_res {
             Ok(json) => Ok(Self(json)),
             Err(e) => {
@@ -45,7 +45,7 @@ impl Default for Config {
 ////////////////////////////////////////////////////////////////////////////////
 // the Buzzer can either be open, closed, or taken by a player.
 // the Buzzer state can be serialized and sent as JSON
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Serialize, PartialEq)]
 #[serde(tag = "state")]
 pub enum Buzzer {
     Open {
@@ -53,7 +53,9 @@ pub enum Buzzer {
         opened: Instant,
     },
     Closed,
-    TakenBy { owner: String },
+    TakenBy {
+        owner: String,
+    },
 }
 
 impl Buzzer {
@@ -66,35 +68,35 @@ impl Buzzer {
         *self = Self::Closed;
     }
 
-    pub fn take(&mut self, name: String) {
-        *self = Self::TakenBy { owner: name };
+    pub fn take(&mut self, owner: String) {
+        *self = Self::TakenBy { owner };
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-#[derive(Clone, Serialize, Debug)]
+#[derive(Clone, Serialize)]
 pub struct HistEntry {
     pub time: (u8, u8), // HH:MM
-    pub name: String,
-    pub delta: i32,
+    pub player: String, // player's name
+    pub delta: i32,     // how much their score changed
 }
 
 pub trait History {
-    fn log(&mut self, name: String, score: i32);
+    fn log(&mut self, player: String, score: i32);
 }
 
 impl History for Vec<HistEntry> {
-    fn log(&mut self, name: String, delta: i32) {
+    fn log(&mut self, player: String, delta: i32) {
         if delta != 0 {
             let now = Utc::now().time();
             let time = (now.hour() as u8, now.minute() as u8);
-            self.insert(0, HistEntry { time, name, delta });
+            self.insert(0, HistEntry { time, player, delta });
         }
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Serialize)]
 pub struct Player {
     pub score: i32,
     pub blocked: bool,
