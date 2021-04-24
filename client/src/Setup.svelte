@@ -62,6 +62,8 @@
     $: externDups = $contestants.filter(c => Object.entries($state.scores)
         .some((p: [string, { score: number }]) => p[0] === c.name) && !c.added
     );
+
+    const urlParams = new URLSearchParams(window.location.search);
 </script>
 
 contestant(s), enter your name(s)<br/>
@@ -96,10 +98,12 @@ does this device need host access?<br/>
 <button class="large" on:mousedown={play}
         disabled={externDups.length > 0}>play</button>
 
-<button id="operator" on:mousedown={() => {
-    $contestants = [];
-    $clientState = ClientState.Operator;
-}}>operator</button>
+{#if urlParams.get('op')}
+    <button id="operator" on:mousedown={() => {
+        $contestants = [];
+        $clientState = ClientState.Operator;
+    }}>operator</button>
+{/if}
 
 <style>
     .dup {
