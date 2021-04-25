@@ -118,7 +118,7 @@ async fn go() -> Result<(), Box<dyn Error>> {
     HttpServer::new(move || {
         App::new()
             .service(socket)
-            .service(actix_files::Files::new("/", "./client/public/").index_file("index.html"))
+            .service(actix_files::Files::new("/", "./client/").index_file("index.html"))
             .app_data(data.clone())
     })
     .bind(address)?
