@@ -17,6 +17,7 @@ name = "client"
 version = "0.1.0"
 dependencies = [
  "console_log 0.2.0",
+ "js-sys",
  "log",
  "mogwai",
  "wasm-bindgen",

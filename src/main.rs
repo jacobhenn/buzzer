@@ -64,6 +64,23 @@ async fn socket(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Config represents the values expected to be present in conf.json
+#[derive(Serialize, Deserialize)]
+pub struct Config {
+    pub log_level: LevelFilter,
+    pub address: String,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            log_level: LevelFilter::Warn,
+            address: "127.0.0.1:8080".to_string(),
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Deserialize a Config from the conf.json file, or create one if it's missing
 // read_cfg returns a `(Config, bool)` because I have an incessant need to log
 // everything with the `log` crate. It returns `(_, true)` if it had to create
