@@ -1,9 +1,7 @@
-use crate::command::Command;
-use crate::structs::CmdStr;
 use crate::websockets::Connection;
-use actix::{Actor, Addr, Context, Handler, Message};
 use actix_web_actors::ws::{CloseCode, CloseReason};
-use log::{debug, warn};
+use actix::{Addr, Message};
+use log::warn;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -27,6 +25,7 @@ pub struct Close(pub CloseReason);
 // The Registry stores a map of client ids to their sockets. Connections relay
 // commands they recieve to the registry, which in turn retransmits them to all
 // registered clients.
+#[derive(Default)]
 pub struct Registry(pub HashMap<Uuid, Socket>);
 
 impl Drop for Registry {
@@ -41,53 +40,5 @@ impl Drop for Registry {
                 ),
             }));
         }
-    }
-}
-
-impl Default for Registry {
-    fn default() -> Self {
-        Self(HashMap::new())
-    }
-}
-
-impl Actor for Registry {
-    type Context = Context<Self>;
-}
-
-// Redistribute a command to all registered players
-impl Handler<Command> for Registry {
-    type Result = ();
-
-    fn handle(&mut self, msg: Command, _ctx: &mut Context<Self>) {
-        debug!("resending command `{}` to all players", msg);
-
-        let cmdstr_res = CmdStr::new(&msg);
-
-        if let Ok(cmdstr) = cmdstr_res {
-            let Self(sockets) = self;
-            for (_, socket) in sockets.iter() {
-                socket.do_send(cmdstr.clone());
-            }
-        }
-    }
-}
-
-impl Handler<Connect> for Registry {
-    type Result = ();
-
-    fn handle(&mut self, Connect(id, conn): Connect, _ctx: &mut Context<Self>) {
-        debug!("registering {}", id);
-        let Self(sockets) = self;
-        sockets.insert(id, conn);
-    }
-}
-
-impl Handler<Disconnect> for Registry {
-    type Result = ();
-
-    fn handle(&mut self, Disconnect(id): Disconnect, _ctx: &mut Context<Self>) {
-        debug!("deregistering {}", id);
-        let Self(sockets) = self;
-        sockets.remove(&id);
     }
 }

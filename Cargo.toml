@@ -10,14 +10,14 @@ edition = "2018"
 actix-web-actors = "3"
 actix-files      = "0.5"
 derive_more      = "0.99"
-# serde_json       = "1"
-rmp-serde        = "0.15"
 env_logger       = "0.8"
+rmp-serde        = "0.15"
+serde_json       = "1"
 actix-web        = "3"
 chrono           = "0.4"
 actix            = "0.10"
 serde            = "1"
 rand             = "0.8"
-util             = { path = "util" }
+util             = { path = "util", features = ["actix"] }
 uuid             = { version = "0.8", features = ["v4"] }
 log              = { version = "0.4", features = ["serde"] }

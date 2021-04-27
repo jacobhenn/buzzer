@@ -8,25 +8,24 @@
 #![allow(clippy::multiple_crate_versions)]
 #![allow(clippy::cargo_common_metadata)]
 
-mod command;
 mod registry;
-mod state;
 mod structs;
 mod websockets;
+mod state;
 
-use crate::state::State;
-use crate::structs::Config;
+use crate::state::ServerState;
 use crate::websockets::Connection;
 use actix::{Actor, Addr};
 use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer};
 use actix_web_actors::ws;
 use env_logger::Env;
-use log::{debug, error, warn};
+use log::{debug, error, warn, LevelFilter};
 use std::error::Error;
 use std::fs;
 use std::path::Path;
 use std::time::Instant;
 use uuid::Uuid;
+use serde::{Serialize, Deserialize};
 
 #[cfg(target_family = "unix")]
 const DIR: &str = env!("PWD");
@@ -36,7 +35,7 @@ const DIR: &str = env!("CD");
 
 ////////////////////////////////////////////////////////////////////////////////
 // Full Server URI List:
-//     - "/": serves the svelte app
+//     - "/": serves the client app
 //     - "/ws": websocket connection endpoint
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +47,7 @@ const DIR: &str = env!("CD");
 async fn socket(
     req: HttpRequest,
     stream: web::Payload,
-    data: web::Data<Addr<State>>,
+    data: web::Data<Addr<ServerState>>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let data_ref = data.get_ref();
 
@@ -56,7 +55,6 @@ async fn socket(
         last_beat: Instant::now(),
         state: data_ref.clone(),
         id: Uuid::new_v4(),
-        players: Vec::new(),
     };
 
     debug!("connecting to new client at {}...", conn.id);
@@ -93,7 +91,7 @@ fn read_cfg() -> Result<(Config, bool), Box<dyn Error>> {
         let cfg_str = fs::read_to_string(cfg_path)?;
         Ok((serde_json::from_str(&cfg_str)?, false))
     } else {
-        let def: Config = Config::default();
+        let def = Config::default();
         fs::write(cfg_path, serde_json::to_string(&def)?)?;
         Ok((def, true))
     }
@@ -129,7 +127,7 @@ async fn go() -> Result<(), Box<dyn Error>> {
         );
     }
 
-    let data = web::Data::new(State::default().start());
+    let data = web::Data::new(ServerState::new().start());
 
     let (Config { address, .. }, _) = cfg_res?;
     HttpServer::new(move || {
