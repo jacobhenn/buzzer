@@ -2,8 +2,9 @@
 
 mod utils;
 
-use log::{Level, info, warn, error};
+use log::{error, info, warn, Level};
 use mogwai::prelude::*;
+use util::command::Command;
 use wasm_bindgen::prelude::*;
 use web_sys::{MessageEvent, WebSocket};
 
@@ -13,13 +14,13 @@ struct App {
 
 #[derive(Clone)]
 enum AppModel {
-    ReceivedWsMsg(String),
-    TransmitWsMsg(String),
+    ReceivedWsMsg(Command),
+    TransmitWsMsg(Command),
 }
 
 #[derive(Clone)]
 enum AppView {
-    ReceivedWsMsg(String),
+    ReceivedWsMsg(Command),
 }
 
 impl Component for App {
@@ -29,13 +30,16 @@ impl Component for App {
 
     fn update(&mut self, msg: &AppModel, tx: &Transmitter<AppView>, _sub: &Subscriber<AppModel>) {
         match msg {
-            AppModel::ReceivedWsMsg(s) => {
-                tx.send(&AppView::ReceivedWsMsg(s.to_string()));
+            AppModel::ReceivedWsMsg(cmd) => {
+                tx.send(&AppView::ReceivedWsMsg(cmd.clone()));
             }
-            AppModel::TransmitWsMsg(s) => {
-                let res = self.ws.send_with_str(s);
-                if let Err(e) = res {
-                    error!("couldn't send websocket message: {:?}", e);
+            AppModel::TransmitWsMsg(cmd) => {
+                let bin_res = rmp_serde::to_vec(cmd);
+                if let Ok(bin) = bin_res {
+                    let res = self.ws.send_with_u8_array(&bin);
+                    if let Err(e) = res {
+                        error!("couldn't send websocket message: {:?}", e);
+                    }
                 }
             }
         }
@@ -44,12 +48,18 @@ impl Component for App {
     fn view(&self, tx: &Transmitter<AppModel>, rx: &Receiver<AppView>) -> ViewBuilder<HtmlElement> {
         builder! {
             <div>
-                <input
-                    cast:type=web_sys::HtmlInputElement
-                    on:change=tx.contra_map(|evt: &Event| {
-                        AppModel::TransmitWsMsg(utils::event_input_value(evt).unwrap())
-                    })
-                />
+                <button
+                    on:click=tx.contra_map(|_| AppModel::TransmitWsMsg(Command::OpenBuzzer))
+                >
+                    "open buzzer"
+                </button>
+                <br/>
+
+                <button
+                    on:click=tx.contra_map(|_| AppModel::TransmitWsMsg(Command::EndRound))
+                >
+                    "end round"
+                </button>
                 <br/>
 
                 {rx.branch_filter_map(|msg| match msg {
@@ -82,16 +92,22 @@ pub fn main() -> Result<(), JsValue> {
 
     let host = window.unwrap().location().host()?;
     let ws = WebSocket::new(&format!("ws://{}/ws", host))?;
+    ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
 
     let gizmo = Gizmo::from(App { ws: ws.clone() });
 
     let tx = gizmo.trns.clone();
     let onmessage_callback = Closure::wrap(Box::new(move |e: MessageEvent| {
-        if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
-            info!("recieved from server: {:?}", txt);
-            tx.send(&AppModel::ReceivedWsMsg(format!("{:?}", txt)));
+        if let Ok(abuf) = e.data().dyn_into::<js_sys::ArrayBuffer>() {
+            info!("recieved from server: {:?}", abuf);
+            let bin = js_sys::Uint8Array::new(&abuf).to_vec();
+            let cmd = rmp_serde::from_read_ref(&bin).unwrap();
+            tx.send(&AppModel::ReceivedWsMsg(cmd));
         } else {
-            warn!("failed to understand unknown message from server: {:?}", e.data());
+            warn!(
+                "failed to understand unknown message from server: {:?}",
+                e.data()
+            );
         }
     }) as Box<dyn FnMut(MessageEvent)>);
     ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
