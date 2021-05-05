@@ -8,7 +8,9 @@ edition = "2018"
 
 [dependencies]
 derive_more = "0.99"
-chrono      = { version = "0.4", features = ["serde"] }
 serde       = { version = "1", features = ["derive"] }
 actix       = { version = "0.10", optional = true }
 log         = "0.4"
+
+[profile.dev]
+opt-level = "z"

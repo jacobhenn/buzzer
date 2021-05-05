@@ -1,108 +1,45 @@
 #![allow(unused_braces)]
+#![warn(missing_docs)]
+//! A mogwai client for Buzzer.
+//!
+//! This client is currently in pre-alpha and a fully-featured version will not be available for
+//! several weeks.
 
-mod utils;
-
-use log::{error, info, warn, Level};
+/// App contains all of the components which make up the client.
+pub mod app;
+pub mod utils;
+use crate::app::AppModel;
+use app::App;
+use log::{info, warn, error, Level};
 use mogwai::prelude::*;
-use util::command::Command;
+use utils::PageState;
 use wasm_bindgen::prelude::*;
-use web_sys::{MessageEvent, WebSocket};
+use web_sys::MessageEvent;
+use std::panic;
 
-struct App {
-    ws: WebSocket,
-}
-
-#[derive(Clone)]
-enum AppModel {
-    ReceivedWsMsg(Command),
-    TransmitWsMsg(Command),
-}
-
-#[derive(Clone)]
-enum AppView {
-    ReceivedWsMsg(Command),
-}
-
-impl Component for App {
-    type DomNode = HtmlElement;
-    type ModelMsg = AppModel;
-    type ViewMsg = AppView;
-
-    fn update(&mut self, msg: &AppModel, tx: &Transmitter<AppView>, _sub: &Subscriber<AppModel>) {
-        match msg {
-            AppModel::ReceivedWsMsg(cmd) => {
-                tx.send(&AppView::ReceivedWsMsg(cmd.clone()));
-            }
-            AppModel::TransmitWsMsg(cmd) => {
-                let bin_res = rmp_serde::to_vec(cmd);
-                if let Ok(bin) = bin_res {
-                    let res = self.ws.send_with_u8_array(&bin);
-                    if let Err(e) = res {
-                        error!("couldn't send websocket message: {:?}", e);
-                    }
-                }
-            }
-        }
-    }
-
-    fn view(&self, tx: &Transmitter<AppModel>, rx: &Receiver<AppView>) -> ViewBuilder<HtmlElement> {
-        builder! {
-            <div>
-                <button
-                    on:click=tx.contra_map(|_| AppModel::TransmitWsMsg(Command::OpenBuzzer))
-                >
-                    "open buzzer"
-                </button>
-                <br/>
-
-                <button
-                    on:click=tx.contra_map(|_| AppModel::TransmitWsMsg(Command::EndRound))
-                >
-                    "end round"
-                </button>
-                <br/>
-
-                {rx.branch_filter_map(|msg| match msg {
-                    AppView::ReceivedWsMsg(s) => Some(format!("recieved: {}", s)),
-                })}
-            </div>
-        }
-    }
-}
-
-fn view_init_error(msg: &str) -> View<HtmlElement> {
-    view! {
-        <strong style:color="#bf616a">
-            "an error occurred while initializing the page:"<br/>
-            {msg}
-        </strong>
-    }
-}
-
+/// WASM entry point.
 #[wasm_bindgen(start)]
 pub fn main() -> Result<(), JsValue> {
-    console_log::init_with_level(Level::Info).unwrap();
+    console_log::init_with_level(Level::Trace).unwrap();
 
-    let window = web_sys::window();
-    if window.is_none() {
-        error!("couldn't get Window object");
-        let view = view_init_error("couldn't get Window object");
-        return view.run();
-    }
+    panic::set_hook(Box::new(|panic_info| {
+        error!("{}", panic_info);
+    }));
 
-    let host = window.unwrap().location().host()?;
-    let ws = WebSocket::new(&format!("ws://{}/ws", host))?;
-    ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
+    info!("--- {} v{} ---", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
 
-    let gizmo = Gizmo::from(App { ws: ws.clone() });
+    let gizmo = Gizmo::from(App::new()?);
 
     let tx = gizmo.trns.clone();
     let onmessage_callback = Closure::wrap(Box::new(move |e: MessageEvent| {
         if let Ok(abuf) = e.data().dyn_into::<js_sys::ArrayBuffer>() {
-            info!("recieved from server: {:?}", abuf);
             let bin = js_sys::Uint8Array::new(&abuf).to_vec();
-            let cmd = rmp_serde::from_read_ref(&bin).unwrap();
-            tx.send(&AppModel::ReceivedWsMsg(cmd));
+            let cmd_res = rmp_serde::from_read_ref(&bin);
+            if let Ok(cmd) = cmd_res {
+                tx.send(&AppModel::ReceivedWsMsg(cmd));
+            } else if let Err(e) = cmd_res {
+                error!("failed to deserialize command from server: {}", e);
+            }
         } else {
             warn!(
                 "failed to understand unknown message from server: {:?}",
@@ -110,8 +47,17 @@ pub fn main() -> Result<(), JsValue> {
             );
         }
     }) as Box<dyn FnMut(MessageEvent)>);
-    ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
+    gizmo
+        .state
+        .borrow()
+        .ws
+        .set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
     onmessage_callback.forget();
+
+    gizmo.trns.send({
+        // debug!("inside tx.send");
+        &AppModel::Transition(PageState::Setup)
+    });
 
     let view = View::from(gizmo.view_builder());
     view.run()

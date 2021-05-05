@@ -1,13 +1,18 @@
-use actix::{Handler, Actor, Context};
-use crate::structs::CmdSer;
-use log::debug;
-use util::state::GameState;
-use util::command::Command;
+use std::time::{Duration, Instant};
+
 use crate::registry::{Connect, Disconnect, Registry};
+use crate::structs::CmdSer;
+use actix::{Actor, AsyncContext, Context, Handler};
+use log::{debug, info};
+use util::{Buzzer, command::Command};
+use util::state::GameState;
+
+const TIMER_LENGTH: Duration = Duration::from_secs(5);
 
 pub struct ServerState {
     game_state: GameState,
     registry: Registry,
+    last_opened: Instant,
 }
 
 impl ServerState {
@@ -15,6 +20,7 @@ impl ServerState {
         Self {
             game_state: GameState::new(),
             registry: Registry::default(),
+            last_opened: Instant::now(),
         }
     }
 }
@@ -26,10 +32,21 @@ impl Actor for ServerState {
 impl Handler<Command> for ServerState {
     type Result = ();
 
-    fn handle(&mut self, msg: Command, _ctx: &mut Context<Self>) {
+    fn handle(&mut self, msg: Command, ctx: &mut Context<Self>) {
         let opt = self.game_state.apply_command(msg.clone());
 
         if opt.is_some() {
+            if let Command::OpenBuzzer = msg {
+                self.last_opened = Instant::now();
+                ctx.run_later(TIMER_LENGTH, |act, ctx| {
+                    if let Buzzer::Open = act.game_state.buzzer {
+                        if act.last_opened.elapsed() >= TIMER_LENGTH {
+                            ctx.address().do_send(Command::EndRound);
+                        }
+                    }
+                });
+            }
+
             if let Ok(cmdser) = CmdSer::new(&msg) {
                 for socket in self.registry.0.values() {
                     socket.do_send(cmdser.clone());
@@ -46,7 +63,9 @@ impl Handler<Connect> for ServerState {
         debug!("registering {}", id);
 
         // Send the current state to the connected player
-        let cmd = Command::SetState { state: self.game_state.clone() };
+        let cmd = Command::SetState {
+            state: self.game_state.clone(),
+        };
         if let Ok(cmdser) = CmdSer::new(&cmd) {
             conn.do_send(cmdser);
         }

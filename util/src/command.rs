@@ -27,8 +27,10 @@ pub enum Command {
     EditHistory { index: usize, delta: i32 },
     #[display(fmt = "removing history entry #{}", index)]
     RemoveHistory { index: usize },
-    #[display(fmt = "setting the points worth index to {}", index)]
-    SetPtsIndex { index: usize },
+    #[display(fmt = "adding {} to the points worth index", delta)]
+    AddPtsIndex { delta: usize },
+    #[display(fmt = "subtracting {} from the points worth index", delta)]
+    SubPtsIndex { delta: usize },
     #[display(fmt = "setting the list of point values to {:?}", values)]
     SetPtValues { values: Vec<i32> },
     #[display(fmt = "adding points worth to buzzed in player")]

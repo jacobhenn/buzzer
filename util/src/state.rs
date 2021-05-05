@@ -9,7 +9,7 @@ use serde::{Serialize, Deserialize};
 // respectively. Those wrappers are for the purpose of containing extra data
 // only relevant to the client (such as Contestants) or the server (such as
 // Registry).
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameState {
     pub buzzer: Buzzer,
     pub players: Vec<Player>,
@@ -96,7 +96,7 @@ impl GameState {
     fn owner_correct(&mut self) -> Option<()> {
         if let Buzzer::TakenBy { owner } = &self.buzzer {
             let ptsworth = self.ptvalues.get(self.ptsindex)?;
-            info!(" -> adding {} to {}", ptsworth, owner);
+            info!(" -> adding {} to {}", ptsworth, self.players.get(*owner)?.name);
             self.players.get_mut(*owner)?.score += ptsworth;
             self.history.log(*owner, *ptsworth);
             self.end_round();
@@ -136,6 +136,28 @@ impl GameState {
         Some(())
     }
 
+    fn add_pts_index(&mut self, delta: usize) -> Option<()> {
+        if self.ptsindex + delta < self.ptvalues.len() {
+            self.ptsindex += delta;
+            info!(" -> new points worth is {}", self.ptvalues[self.ptsindex]);
+            Some(())
+        } else {
+            info!(" -> out of bounds, aborting");
+            None
+        }
+    }
+
+    fn sub_pts_index(&mut self, delta: usize) -> Option<()> {
+        if delta <= self.ptsindex {
+            self.ptsindex -= delta;
+            info!(" -> new points worth is {}", self.ptvalues[self.ptsindex]);
+            Some(())
+        } else {
+            info!(" -> out of bounds, aborting");
+            None
+        }
+    }
+
     // Takes a Command and a mutable reference to the state and applies the
     // command to the state. Returns None if the command couldn't be executed
     // for some reason.
@@ -148,7 +170,8 @@ impl GameState {
             Command::RemoveHistory { index }      => self.remove_history(index)?,
             Command::RemovePlayer { index }       => { self.players.remove(index); },
             Command::SetPtValues { values }       => self.ptvalues = values,
-            Command::SetPtsIndex { index }        => self.ptsindex = index,
+            Command::AddPtsIndex { delta }        => self.add_pts_index(delta)?,
+            Command::SubPtsIndex { delta }        => self.sub_pts_index(delta)?,
             Command::AddPlayer { name }           => self.add_player(name),
             Command::Unblock { index }            => self.players.get_mut(index)?.blocked = false,
             Command::SetState { .. }              => (),

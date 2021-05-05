@@ -21,3 +21,6 @@ rand             = "0.8"
 util             = { path = "util", features = ["actix"] }
 uuid             = { version = "0.8", features = ["v4"] }
 log              = { version = "0.4", features = ["serde"] }
+
+[profile.dev]
+opt-level = "z"

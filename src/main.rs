@@ -23,8 +23,6 @@ use log::{debug, error, warn, LevelFilter};
 use std::error::Error;
 use std::fs;
 use std::path::Path;
-use std::time::Instant;
-use uuid::Uuid;
 use serde::{Serialize, Deserialize};
 
 #[cfg(target_family = "unix")]
@@ -51,11 +49,7 @@ async fn socket(
 ) -> Result<HttpResponse, actix_web::Error> {
     let data_ref = data.get_ref();
 
-    let conn = Connection {
-        last_beat: Instant::now(),
-        state: data_ref.clone(),
-        id: Uuid::new_v4(),
-    };
+    let conn = Connection::new(data_ref.clone());
 
     debug!("connecting to new client at {}...", conn.id);
     ws::start(conn, &req, stream)

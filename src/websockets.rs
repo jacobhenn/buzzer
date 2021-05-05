@@ -7,20 +7,29 @@ use actix_web_actors::{
     ws::{CloseCode, CloseReason},
 };
 use log::{info, trace, warn};
-use util::command::Command;
 use std::time::{Duration, Instant};
+use util::command::Command;
 use uuid::Uuid;
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(10);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(15);
 
 pub struct Connection {
-    pub last_beat: Instant,
     pub state: Addr<ServerState>,
     pub id: Uuid,
+    /// The last time a pong was sent from the client at the other end.
+    last_beat: Instant,
 }
 
 impl Connection {
+    pub fn new(state: Addr<ServerState>) -> Self {
+        Self {
+            state,
+            id: Uuid::new_v4(),
+            last_beat: Instant::now(),
+        }
+    }
+
     fn beat_heart(&mut self) {
         self.last_beat = Instant::now();
     }
@@ -70,7 +79,8 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for Connection {
                 ctx.stop();
             }
             Ok(ws::Message::Binary(bin)) => {
-                let cmd_res: Result<Command, rmp_serde::decode::Error> = rmp_serde::from_read_ref(&bin);
+                let cmd_res: Result<Command, rmp_serde::decode::Error> =
+                    rmp_serde::from_read_ref(&bin);
 
                 match cmd_res {
                     Ok(cmd) => {
@@ -120,8 +130,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for Connection {
             Err(e) => {
                 warn!(
                     "protocol error in a frame from {}: {}, closing socket...",
-                    self.id,
-                    e
+                    self.id, e
                 );
             }
         }
