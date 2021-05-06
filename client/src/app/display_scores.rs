@@ -92,7 +92,10 @@ impl Component for DisplayScores {
         rx: &Receiver<Self::ViewMsg>,
     ) -> ViewBuilder<Self::DomNode> {
         builder! {
-            <div patch:children=rx.branch()>
+            <div>
+                <u>"scores"</u><br/>
+                <div patch:children=rx.branch()>
+                </div>
             </div>
         }
     }

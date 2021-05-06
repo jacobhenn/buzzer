@@ -56,6 +56,7 @@ impl Component for HostUtils {
     ) -> mogwai::prelude::ViewBuilder<Self::DomNode> {
         builder! {
             <div id="hostutils">
+                <u>"host utils"</u><br/>
                 "points worth: "
                 {self.state.recv().branch_map(|state|
                     state
@@ -149,6 +150,8 @@ impl Component for HostUtils {
                     </button>
                     "?"
                 </span>
+                <br/>
+                <br/>
             </div>
         }
     }

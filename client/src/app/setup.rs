@@ -1,12 +1,12 @@
 //! The component which allows all players to enter their names if they are
 //! contestants, as well as indicate if they are the host.
 
-use crate::utils::{BK_SPACE, BuzzMethod, event_input_value, send_command};
+use crate::utils::{BuzzMethod, event_input_value, send_command};
 use mogwai::prelude::*;
 use util::command::Command;
 use web_sys::WebSocket;
 
-use crate::utils::{ClientState, Contestant};
+use crate::utils::{ClientState, Contestant, BuzzKey};
 
 /// The component which allows a single contestant to enter their name during setup.
 pub struct InputName {
@@ -160,7 +160,7 @@ impl Component for Setup {
                     if !state.name.trim().is_empty() {
                         self.state.visit_mut(|state| {
                             state.contestants.push(Contestant {
-                                buzz_method: BuzzMethod::Key(BK_SPACE),
+                                buzz_method: BuzzMethod::Key(BuzzKey::Space),
                                 index,
                             });
                         });
@@ -187,7 +187,7 @@ impl Component for Setup {
         builder! {
             <div>
                 "contestants, enter your names"<br/>
-                <strong style:color="#88c0d0">"host, do not enter your name"</strong><br/>
+                <strong style:color="#88c0d0">"host, do not enter your name"</strong><br/><br/>
 
                 <div patch:children=rx.branch_filter_map(|msg| match msg {
                     SetupViewMsg::Patch(patch) => Some(patch.clone()),

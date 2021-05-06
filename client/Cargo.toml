@@ -1,6 +1,6 @@
 [package]
 name = "client"
-version = "6.0.0-dev.15"
+version = "6.0.0-dev.32"
 authors = ["Jacob Henn <windowWeasel@outlook.com>"]
 edition = "2018"
 
@@ -25,12 +25,17 @@ features = [
     "EventTarget",
     "Attr",
     "HtmlInputElement",
+    "HtmlSelectElement",
     "Window",
     "Location",
     "WebSocket",
     "MessageEvent",
     "BinaryType",
+    "KeyboardEvent",
 ]
 
 [profile.dev]
+opt-level = "z"
+
+[profile.release]
 opt-level = "z"

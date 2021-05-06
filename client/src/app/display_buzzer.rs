@@ -77,20 +77,26 @@ impl Component for DisplayBuzzer {
                     class=self.rx.branch_map(|state| DisplayBuzzer::match_class(state))
                 ></div>
                 {self.rx.branch_map(|state| match state.game_state.buzzer {
-                        Buzzer::Open => "the buzzer is open".to_string(),
-                        Buzzer::Closed => "the buzzer is closed".to_string(),
-                        Buzzer::TakenBy { owner } => {
-                            let name =  state
-                                .game_state
-                                .players
-                                .get(owner)
-                                .map(|p| p.name.clone());
-                            format!("{} has buzzed in", name.unwrap_or_default())
-                        }
+                    Buzzer::Open => "the buzzer is open".to_string(),
+                    Buzzer::Closed => "the buzzer is closed".to_string(),
+                    Buzzer::TakenBy { owner } => {
+                        let name =  state
+                            .game_state
+                            .players
+                            .get(owner)
+                            .map(|p| p.name.clone());
+                        format!("{} has buzzed in", name.unwrap_or_default())
+                    }
                 })}
                 <br/>
 
-                <div class="displayblocked">
+                <div id="displayblocked" boolean:hidden=self.rx.branch_map(|state| {
+                    if let Buzzer::Open = state.game_state.buzzer {
+                        false
+                    } else {
+                        true
+                    }
+                })>
                     {self.rx.branch_map(|state|
                         if state.contestants.is_empty() {
                             String::new()
@@ -112,16 +118,18 @@ impl Component for DisplayBuzzer {
                                 .filter_map(|c| c.get_player(&state.game_state))
                                 .filter(|p| p.blocked)
                                 .map(|p| p.name.as_str())
-                                .collect::<Vec<_>>()
-                                .join(" & ");
+                                .collect::<Vec<_>>();
                             if blocked_names.is_empty() {
                                 String::new()
+                            } else if blocked_names.len() == 1 {
+                                format!("{} has already buzzed in", blocked_names.first().unwrap())
                             } else {
-                                format!("{} have already buzzed in", blocked_names)
+                                format!("{} have already buzzed in", blocked_names.join(" & "))
                             }
                         }
                     )}
                 </div>
+                <br/>
             </div>
         }
     }

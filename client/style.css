@@ -10,7 +10,7 @@ body {
     background-color: #2e3440;
     text-align: center;
     margin: 0;
-    font-size: 3em;
+    font-size: 30pt;
 }
 
 #version {
@@ -18,16 +18,32 @@ body {
     right: 0;
     bottom: 0;
     color: #3b4252;
-    font-size: 1em;
+    font-size: 0.5rem;
+}
+
+select {
+    background-color: #2e3440;
+    border: 2px solid #4c566a;
+    border-radius: 10px;
+    transition: all 0.1s ease-in;
+    padding: 0.3rem 1rem;
+    margin: 0.1rem;
+    font-size: inherit;
+} select:hover {
+    cursor: pointer;
+    border-color: #81a1c1;
+    color: #81a1c1;
+} select:focus {
+    outline: none;
 }
 
 button {
     background-color: transparent;
-    border: 0.0625em solid #4c566a;
-    border-radius: 0.25em;
+    border: 2px solid #4c566a;
+    border-radius: 10px;
     transition: all 0.1s ease-in;
-    padding: 0.2em 0.25em;
-    margin: 0.2em;
+    padding: 0.3rem 1rem;
+    margin: 0.1rem;
     font-size: inherit;
 } button:hover {
     cursor: pointer;
@@ -41,7 +57,7 @@ button {
 
 button.bright {
     background-color: #88c0d0;
-    border: 0.0625em solid #88c0d0;
+    border: 0.0625rem solid #88c0d0;
     color: #3b4252
 } button.bright:hover {
     background-color: #81a1c1;
@@ -57,10 +73,10 @@ button.remove {
 input {
     border: 2px solid transparent;
     background-color: #3b4252;
-    border-radius: 0.3em;
+    border-radius: 10px;
     transition: all 0.1s ease;
-    margin: 0.2em;
-    padding: 0.13em;
+    margin: 0.1rem;
+    padding: 0.3rem;
 } input:focus {
     outline: none;
     border-color: #4c566a;
@@ -76,8 +92,8 @@ input {
 
 #topbar {
     width: 100%;
-    height: 0.4em;
-    margin-bottom: 0.2em;
+    height: 1.5rem;
+    margin-bottom: 0.2rem;
     transition: all 0s;
 } #topbar.open {
     background-color: #a3be8c;
@@ -98,7 +114,7 @@ input {
 
 #displaybuzzer {
     font-weight: bold;
-    font-size: 1.6em;
+    font-size: 4rem;
 } #displaybuzzer.open {
     color: #a3be8c;
 } #displaybuzzer.blocked {
@@ -114,9 +130,11 @@ input {
 }
 
 #hostutils {
-    font-size: 1em;
+    font-size: 2.5rem;
 }
 
 #displayblocked {
-    font-size: 3em;
+    font-size: 2.3rem;
+    font-weight: normal;
+    color: #ebcb8b;
 }

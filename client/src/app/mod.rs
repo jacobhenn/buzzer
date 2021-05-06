@@ -1,15 +1,17 @@
+pub mod buzz_keys;
 pub mod display_buzzer;
 pub mod display_scores;
 pub mod host_utils;
 pub mod setup;
-// pub mod buzz_keys;
 use crate::{
     app::display_buzzer::DisplayBuzzer,
     utils::{send_command, ClientState, PageState},
 };
+use buzz_keys::{BuzzKeys, BuzzKeysModelMsg};
 use display_scores::DisplayScores;
 use host_utils::HostUtils;
 use mogwai::prelude::*;
+use setup::SetupModelMsg;
 use util::command::Command;
 use web_sys::WebSocket;
 
@@ -81,13 +83,16 @@ impl Component for App {
                         state: self.state.clone(),
                         input_children: Vec::new(),
                     });
+                    setup.trns.send(&SetupModelMsg::AddContestant);
                     sub.subscribe_filter_map(&setup.recv, |msg| match msg {
                         SetupViewMsg::Play(am_host) => {
                             Some(AppModel::Transition(PageState::Play { am_host: *am_host }))
                         }
                         _ => None,
                     });
-                    tx.send(&Patch::PushBack { value: View::from(setup.view_builder()) });
+                    tx.send(&Patch::PushBack {
+                        value: View::from(setup.view_builder()),
+                    });
                 }
                 PageState::Play { am_host } => {
                     let display_buzzer = Gizmo::from(DisplayBuzzer {
@@ -97,6 +102,20 @@ impl Component for App {
                         index: 0,
                         value: View::from(display_buzzer.view_builder()),
                     });
+
+                    let buzz_keys = Gizmo::from(BuzzKeys {
+                        state: self.state.clone(),
+                        ws: self.ws.clone(),
+                    });
+                    tx.send(&Patch::PushBack {
+                        value: View::from(buzz_keys.view_builder()),
+                    });
+                    self.state
+                        .recv()
+                        .branch()
+                        .forward_map(&buzz_keys.trns, |m| {
+                            BuzzKeysModelMsg::StateChanged(m.clone())
+                        });
 
                     if *am_host {
                         let host_utils = Gizmo::from(HostUtils {
@@ -109,6 +128,9 @@ impl Component for App {
                     }
 
                     let display_scores = Gizmo::from(DisplayScores { num_children: 0 });
+                    tx.send(&Patch::PushBack {
+                        value: View::from(display_scores.view_builder()),
+                    });
 
                     self.state
                         .recv()

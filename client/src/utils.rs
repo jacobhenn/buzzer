@@ -1,20 +1,50 @@
 //! Some helper types and functions that make more sense to be defined here
 //! than to anywhere else.
 
+use std::fmt;
+
 use util::{Player, command::Command, state::GameState};
 use wasm_bindgen::JsCast;
-use web_sys::{Event, HtmlInputElement, WebSocket};
+use web_sys::{Event, HtmlInputElement, HtmlSelectElement, KeyboardEvent, WebSocket};
 use log::error;
 
-pub const BK_SPACE:       (&'static str, &'static str) = ("Space", "Space");
-pub const BK_CONTROLLEFT: (&'static str, &'static str) = ("ControlLeft", "Left Control");
-pub const BK_NUMPADENTER: (&'static str, &'static str) = ("NumpadEnter", "Numpad Enter");
-pub const BK_NUMPAD0:     (&'static str, &'static str) = ("Numpad0", "Numpad 0");
+macro_rules! define_buzz_keys {
+    { $( $Variant:ident $name:literal),* $(,)* } => {
+        #[derive(Clone, Copy, Debug, PartialEq)]
+        /// All possible keys a contestant may use to buzz in.
+        pub enum BuzzKey {
+            $(
+                #[doc="Auto-generated variant for: "]
+                #[doc=$name]
+                $Variant
+            ),*,
+        }
+        /// An auto-generated list of all variants of BuzzKey.
+        pub const BUZZ_KEYS: &'static [BuzzKey] = &[$(BuzzKey::$Variant),*];
+        impl fmt::Display for BuzzKey {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "{}", match self {
+                    $(Self::$Variant => $name),*,
+                })
+            }
+        }
+    }
+}
 
-#[derive(Clone, Copy, Debug)]
-/// All possible keys that a contestant may use to buzz in
+define_buzz_keys! {
+    Space "Space",
+    ControlLeft "Left Control",
+    NumpadEnter "Numpad Enter",
+    Numpad0 "Numpad 0",
+}
+
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+/// All possible methods that a contestant may use to buzz in
 pub enum BuzzMethod {
-    Key((&'static str, &'static str)),
+    /// The contestant will use the given key to buzz in.
+    Key(BuzzKey),
+    /// The contestant will use their mouse or touchscreen to buzz in.
     Mouse,
 }
 
@@ -82,7 +112,7 @@ pub enum PageState {
         /// of close codes.
         code: u16,
         /// A description of the reason of the closure given by the server.
-        /// See `buzzer::websockets::Connection` for some examples.
+        /// See [`buzzer::websockets::Connection`] for some examples.
         reason: String,
     },
 }
@@ -140,4 +170,23 @@ pub fn event_input_value(evt: &Event) -> Option<String> {
     let target = target?;
     let input: &HtmlInputElement = target.unchecked_ref();
     Some(input.value().trim().to_string())
+}
+
+/// Takes an event and returns the selectedIndex of `evt.target`. Useful inside of
+/// event handlers such as onchange or oninput.
+pub fn event_select_index(evt: &Event) -> Option<i32> {
+    let target = evt.target();
+    if target.is_none() {
+        error!("event_select_index: couldn't get event.target");
+    }
+    let target = target?;
+    let select: &HtmlSelectElement = target.unchecked_ref();
+    Some(select.selected_index())
+}
+
+/// Takes an event and returns `evt.code`. Useful inside of
+/// event handlers such as onkeydown.
+pub fn event_keyboard_code(evt: &Event) -> String {
+    let kbd_event: &KeyboardEvent = evt.unchecked_ref();
+    kbd_event.code()
 }
