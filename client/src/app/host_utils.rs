@@ -67,16 +67,12 @@ impl Component for HostUtils {
                         .unwrap_or_default()
                 )}" "
                 <button style:padding="5px"
-                    on:click=tx.contra_map(|_| HostUtilsModel::TransmitWsMsg(
-                        Command::AddPtsIndex { delta: 1 }
-                    ))
+                    on:click=tx.contra_map(|_| HostUtilsModel::TransmitWsMsg(Command::AddPtsIndex))
                 >
                     "+"
                 </button>
                 <button style:padding="5px"
-                    on:click=tx.contra_map(|_| HostUtilsModel::TransmitWsMsg(
-                        Command::SubPtsIndex { delta: 1 }
-                    ))
+                    on:click=tx.contra_map(|_| HostUtilsModel::TransmitWsMsg(Command::SubPtsIndex))
                 >
                     "-"
                 </button>
@@ -143,13 +139,25 @@ impl Component for HostUtils {
                     " or "
                     <button class="bright" style:padding="0 8px"
                         on:click=tx.contra_map(|_| HostUtilsModel::TransmitWsMsg(
-                            Command::OpenBuzzer
+                            Command::OwnerIncorrect
                         ))
                     >
                         "incorrect"
                     </button>
                     "?"
                 </span>
+                <br/>
+                <button id="undo"
+                    on:click=tx.contra_map(|_| HostUtilsModel::TransmitWsMsg(Command::Undo))
+                    boolean:disabled=self.state.recv().branch_map(|state| {
+                        !state.game_state.history.iter().any(|cmd| cmd.from_host())
+                    })
+                >
+                    "⎌ undo "
+                    {self.state.recv().branch_map(|state| {
+                        state.game_state.format_nth_command(0).unwrap_or_default()
+                    })}
+                </button>
                 <br/>
                 <br/>
             </div>
