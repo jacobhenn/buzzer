@@ -82,6 +82,7 @@ impl Component for App {
                         ws: self.ws.clone(),
                         state: self.state.clone(),
                         input_children: Vec::new(),
+                        am_host: false,
                     });
                     setup.trns.send(&SetupModelMsg::AddContestant);
                     sub.subscribe_filter_map(&setup.recv, |msg| match msg {
@@ -127,7 +128,10 @@ impl Component for App {
                         });
                     }
 
-                    let display_scores = Gizmo::from(DisplayScores { num_children: 0 });
+                    let display_scores = Gizmo::from(DisplayScores {
+                        num_children: 0,
+                        ws: self.ws.clone(),
+                    });
                     tx.send(&Patch::PushBack {
                         value: View::from(display_scores.view_builder()),
                     });
@@ -136,6 +140,11 @@ impl Component for App {
                         .recv()
                         .branch()
                         .forward_map(&display_scores.trns, |m| m.clone());
+
+                    // ensure that initial updates are sent to all state listners
+                    self.state.visit_mut(|state| {
+                        state.page_state = PageState::Play { am_host: *am_host }
+                    });
                 }
                 PageState::Over { .. } => todo!(),
             },

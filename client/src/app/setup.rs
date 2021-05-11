@@ -89,8 +89,10 @@ pub struct Setup {
     /// A wrapper around the global state distributed by the App to many of
     /// its child components.
     pub state: Model<ClientState>,
-    /// A list of all the child [`InputName`] components of Setup
+    /// A list of all the child [`InputName`] components of Setup.
     pub input_children: Vec<Gizmo<InputName>>,
+    /// Whether or not someone has checked the "host access" button.
+    pub am_host: bool,
 }
 
 #[derive(Clone)]
@@ -101,8 +103,10 @@ pub enum SetupModelMsg {
     /// Sent when the "🛇" button next to the input child at the given index
     /// is clicked
     RemoveContestant(usize),
+    /// Sent when someone presses the "host access" button
+    ToggleAmHost,
     /// Sent when the "play" button is clicked. The `bool` field represents
-    Play(bool),
+    Play,
 }
 
 #[derive(Clone)]
@@ -111,8 +115,11 @@ pub enum SetupViewMsg {
     /// Sent to the DOM to instruct it to apply the given patch to the `<div>`
     /// containing all [`InputName`] children
     Patch(Patch<View<HtmlElement>>),
+    /// Sent back to the DOM when someone presses the "host access" button.
+    ToggleAmHost(bool),
     /// Sent through the subscription of App to indicate that the user has
-    /// pressed the "play" button.
+    /// pressed the "play" button. The bool indicates whether or not they checked the "host access"
+    /// button.
     Play(bool),
 }
 
@@ -153,7 +160,7 @@ impl Component for Setup {
                 }
                 self.input_children.remove(*index);
             }
-            SetupModelMsg::Play(am_host) => {
+            SetupModelMsg::Play => {
                 let mut index = self.state.visit(|state| state.game_state.players.len());
                 for input in &self.input_children {
                     let state = input.state_ref();
@@ -174,7 +181,11 @@ impl Component for Setup {
                     }
                 }
 
-                tx_view.send(&SetupViewMsg::Play(*am_host));
+                tx_view.send(&SetupViewMsg::Play(self.am_host));
+            }
+            SetupModelMsg::ToggleAmHost => {
+                self.am_host = !self.am_host;
+                tx_view.send(&SetupViewMsg::ToggleAmHost(self.am_host));
             }
         }
     }
@@ -199,8 +210,19 @@ impl Component for Setup {
                     "add contestant"
                 </button><br/><br/>
 
+                "is the host on this page?"<br/>
+                <button
+                    on:mousedown=tx.contra_map(|_| SetupModelMsg::ToggleAmHost)
+                >
+                    {("☐", rx.branch_filter_map(|msg| match msg {
+                        SetupViewMsg::ToggleAmHost(am_host) => Some(if *am_host { "☑".into() } else { "☐".into() }),
+                        _ => None,
+                    }))}
+                    " host access"
+                </button><br/><br/>
+
                 <button class="bright"
-                    on:click=tx.contra_map(|_| SetupModelMsg::Play(true))
+                    on:click=tx.contra_map(|_| SetupModelMsg::Play)
                 >
                     "play"
                 </button>

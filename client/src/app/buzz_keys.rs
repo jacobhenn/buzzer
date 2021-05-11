@@ -61,11 +61,11 @@ impl Component for SelectBuzzKey {
                 for buzz_key in BUZZ_KEYS {
                     let value = if BuzzMethod::Key(*buzz_key) == current_buzz_method {
                         view! {
-                            <option selected>{format!("{:?}", buzz_key)}</option>
+                            <option selected>{format!("{}", buzz_key)}</option>
                         }
                     } else {
                         view! {
-                            <option>{format!("{:?}", buzz_key)}</option>
+                            <option>{format!("{}", buzz_key)}</option>
                         }
                     };
                     tx_view.send(&Patch::PushBack { value });

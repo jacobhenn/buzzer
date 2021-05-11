@@ -92,7 +92,7 @@ pub enum BottomType {}
 
 /// PageState represents which phase of play the player(s) at this page are
 /// currently in.
-#[derive(PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum PageState {
     /// The phase at which the player(s) are asked to enter their name(s) and
     /// the host, if any, is asked to declare themself.

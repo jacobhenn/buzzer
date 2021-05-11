@@ -1,3 +1,7 @@
+// ### Master todo list
+//
+// * Latency tracking/logging
+// * Log duration between buzzer open and buzz in in ms
 #![deny(clippy::all)]
 #![deny(clippy::pedantic)]
 #![deny(clippy::nursery)]

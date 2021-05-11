@@ -1,6 +1,6 @@
 [package]
 name = "client"
-version = "6.0.0-dev.41"
+version = "6.0.0-dev.61"
 authors = ["Jacob Henn <windowWeasel@outlook.com>"]
 edition = "2018"
 

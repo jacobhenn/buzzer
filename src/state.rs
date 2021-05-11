@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use crate::registry::{Connect, Disconnect, Registry};
 use crate::structs::CmdSer;
 use actix::{Actor, AsyncContext, Context, Handler};
-use log::{debug, info};
+use log::debug;
 use util::{Buzzer, command::Command};
 use util::state::GameState;
 

@@ -1,9 +1,18 @@
-#![allow(unused_braces)]
-#![warn(missing_docs)]
 //! A mogwai client for Buzzer.
 //!
 //! This client is currently in pre-alpha and a fully-featured version will not be available for
 //! several weeks.
+//!
+//! ### Master todo list
+//!
+//! * host edit scores
+//! * `for n points` at the top
+//! * hotkeys
+//! * panic detection + display
+//! * "game over" display
+//! * back to setup button + functionality
+#![allow(unused_braces)]
+#![warn(missing_docs)]
 
 /// App contains all of the components which make up the client.
 pub mod app;

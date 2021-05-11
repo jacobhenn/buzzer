@@ -301,7 +301,7 @@ impl GameState {
 
     fn format_set_score(&self, index: &usize, score: &i32) -> Option<String> {
         let name = &self.players.get(*index)?.name;
-        Some(format!("setting {}'s score to {}'", name, score))
+        Some(format!("setting {}'s score to {}", name, score))
     }
 
     fn format_owner_correct(&self) -> Option<String> {

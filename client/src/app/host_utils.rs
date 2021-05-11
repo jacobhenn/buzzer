@@ -2,7 +2,7 @@
 //! and do things such as open the buzzer or mark the buzzed in player as
 //! correct.
 
-use crate::utils::send_command;
+use crate::utils::{display_commas, send_command};
 use mogwai::prelude::*;
 use web_sys::{HtmlElement, WebSocket};
 
@@ -63,7 +63,7 @@ impl Component for HostUtils {
                         .game_state
                         .ptvalues
                         .get(state.game_state.ptsindex)
-                        .map(|u| u.to_string())
+                        .map(|u| display_commas(u))
                         .unwrap_or_default()
                 )}" "
                 <button style:padding="5px"

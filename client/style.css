@@ -139,3 +139,18 @@ input {
     font-weight: normal;
     color: #ebcb8b;
 }
+
+input.displayscore {
+    width: 10rem;
+    background-color: transparent;
+} input.displayscore:hover {
+    border-color: #4c566a;
+}
+
+input.displayscore::placeholder {
+    color: #eceff4;
+} input.displayscore::-ms-input-placeholder {
+    color: #eceff4;
+} input.displayscore::-webkit-input-placeholder {
+    color: #eceff4;
+}
