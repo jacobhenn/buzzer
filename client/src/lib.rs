@@ -1,22 +1,18 @@
 //! A mogwai client for Buzzer.
 //!
-//! This client is currently in pre-alpha and a fully-featured version will not be available for
-//! several weeks.
-//!
 //! ### Master todo list
 //!
-//! * host edit scores
-//! * `for n points` at the top
-//! * hotkeys
-//! * panic detection + display
-//! * "game over" display
+//! * rewrite class matching using `.then()`
 //! * back to setup button + functionality
+//! * display history
+//! * panic detection + display
 #![allow(unused_braces)]
 #![warn(missing_docs)]
 
 /// App contains all of the components which make up the client.
 pub mod app;
 pub mod utils;
+use web_sys::CloseEvent;
 use crate::app::AppModel;
 use app::App;
 use log::{info, warn, error, Level};
@@ -62,6 +58,17 @@ pub fn main() -> Result<(), JsValue> {
         .ws
         .set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
     onmessage_callback.forget();
+
+    let tx = gizmo.trns.clone();
+    let onclose_callback = Closure::wrap(Box::new(move |e: CloseEvent| {
+        tx.send(&AppModel::Transition(PageState::Over { code: e.code(), reason: e.reason() }));
+    }) as Box<dyn FnMut(CloseEvent)>);
+    gizmo
+        .state
+        .borrow()
+        .ws
+        .set_onclose(Some(onclose_callback.as_ref().unchecked_ref()));
+    onclose_callback.forget();
 
     gizmo.trns.send({
         // debug!("inside tx.send");

@@ -136,7 +136,7 @@ impl GameState {
     }
 
     fn sub_pts_index(&mut self) -> Option<()> {
-        if self.ptsindex != 0 {
+        if self.ptsindex > 0 {
             self.ptsindex -= 1;
             info!(" -> new points worth is {}", self.ptvalues[self.ptsindex]);
             Some(())
@@ -170,7 +170,7 @@ impl GameState {
         for cmd in &self.history {
             if let Command::Buzz { index } = cmd {
                 self.buzzer = Buzzer::TakenBy { owner: *index };
-                self.ptsindex -= 1;
+                self.ptsindex += self.ptvalues.len() - 1;
                 self.ptsindex %= self.ptvalues.len();
                 if let Some(ptsworth) = self.ptvalues.get(self.ptsindex) {
                     if let Some(player) = self.players.get_mut(*index) {
@@ -212,7 +212,7 @@ impl GameState {
 
     fn undo_end_round(&mut self) {
         self.buzzer = Buzzer::Open;
-        self.ptsindex -= 1;
+        self.ptsindex += self.ptvalues.len() - 1;
         self.ptsindex %= self.ptvalues.len();
 
         for cmd in &self.history {

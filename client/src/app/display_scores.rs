@@ -1,7 +1,6 @@
 //! The component which lists all of the players in play by name along with
 //! their scores.
 
-use log::info;
 use mogwai::prelude::*;
 use util::{command::Command, Player};
 use web_sys::WebSocket;
@@ -20,6 +19,8 @@ pub struct DisplayScore {
     pub ws: WebSocket,
     /// Should this score be editable?
     pub can_edit: bool,
+    /// Is this player the final winner of the game?
+    pub winner: bool,
 }
 
 impl Component for DisplayScore {
@@ -49,25 +50,29 @@ impl Component for DisplayScore {
         tx: &Transmitter<Self::ModelMsg>,
         _rx: &Receiver<Self::ViewMsg>,
     ) -> ViewBuilder<Self::DomNode> {
+        let class = format!(
+            "displayscore {} {}",
+            self.player.blocked.then(|| "blocked").unwrap_or_default(),
+            self.winner.then(|| "winner").unwrap_or_default(),
+        );
+
         builder! {
             <div>
-                {self.player.name.clone()}": "
+                <span class=class.clone()>
+                    {self.player.name.clone()}": "
+                </span>
 
                 <span
                     boolean:hidden=self.can_edit
-                    class=if self.player.blocked { "displayscore blocked" } else { "displayscore" }
+                    class=class.clone()
                 >
                     {display_commas(&self.player.score)}
                 </span>
 
                 <input
-                    on:change=tx.contra_filter_map(|evt| {
-                        let score_str = event_input_value(evt)?;
-                        let score = score_str.parse().ok()?;
-                        Some(score)
-                    })
+                    on:change=tx.contra_filter_map(|evt| event_input_value(evt)?.parse().ok())
                     boolean:hidden=!self.can_edit
-                    class=if self.player.blocked { "displayscore blocked" } else { "displayscore" }
+                    class=class
                     placeholder={display_commas(&self.player.score)}
                 />
             </div>
@@ -99,8 +104,6 @@ impl Component for DisplayScores {
         tx_view: &Transmitter<Self::ViewMsg>,
         _sub: &Subscriber<Self::ModelMsg>,
     ) {
-        info!("DisplayScores updated at {:?}", msg.page_state);
-
         let mut players = msg.game_state.players.clone();
         players.sort_unstable_by_key(|p| p.score);
         players.reverse();
@@ -110,35 +113,29 @@ impl Component for DisplayScores {
             _ => false,
         };
 
-        for index in 0..self.num_children {
-            if let Some(player) = players.get(index) {
-                let gizmo = Gizmo::from(DisplayScore {
-                    player: player.clone(),
-                    ws: self.ws.clone(),
-                    index,
-                    can_edit,
-                });
-                let value = View::from(gizmo.view_builder());
-                tx_view.send(&Patch::Replace { index, value });
-            } else {
-                tx_view.send(&Patch::PopBack);
-                self.num_children -= 1;
-            }
-        }
+        let max_score = players.first().map(|p| p.score);
 
-        if self.num_children < players.len() {
-            for index in self.num_children..players.len() {
-                let player = players[index].clone();
-                let gizmo = Gizmo::from(DisplayScore {
-                    player,
-                    ws: self.ws.clone(),
-                    index,
-                    can_edit,
-                });
-                let value = View::from(gizmo.view_builder());
-                tx_view.send(&Patch::PushBack { value });
-                self.num_children += 1;
-            }
+        tx_view.send(&Patch::RemoveAll);
+
+        for index in 0..players.len() {
+            let player = &players[index];
+
+            let winner = if let PageState::Over { .. } = msg.page_state {
+                player.score == max_score.unwrap()
+            } else {
+                false
+            };
+
+            let gizmo = Gizmo::from(DisplayScore {
+                player: player.clone(),
+                ws: self.ws.clone(),
+                index,
+                can_edit,
+                winner,
+            });
+
+            let value = View::from(gizmo.view_builder());
+            tx_view.send(&Patch::PushBack { value });
         }
     }
 

@@ -7,7 +7,7 @@ use log::debug;
 use util::{Buzzer, command::Command};
 use util::state::GameState;
 
-const TIMER_LENGTH: Duration = Duration::from_secs(5);
+const TIMER_LENGTH: Duration = Duration::from_secs(7);
 
 pub struct ServerState {
     game_state: GameState,
@@ -36,7 +36,18 @@ impl Handler<Command> for ServerState {
         let opt = self.game_state.apply_command(msg.clone());
 
         if opt.is_some() {
-            if let Command::OpenBuzzer = msg {
+            if match msg {
+                Command::OpenBuzzer | Command::OwnerIncorrect => true,
+                Command::Undo => {
+                    let last_cmd_from_host = self.game_state.history.iter().find(|c| c.from_host());
+                    match last_cmd_from_host {
+                        Some(Command::OpenBuzzer) => true,
+                        Some(Command::OwnerIncorrect) => true,
+                        _ => false,
+                    }
+                }
+                _ => false,
+            } {
                 self.last_opened = Instant::now();
                 ctx.run_later(TIMER_LENGTH, |act, ctx| {
                     if let Buzzer::Open = act.game_state.buzzer {

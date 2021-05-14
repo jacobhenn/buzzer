@@ -69,12 +69,12 @@ impl Component for HostUtils {
                 <button style:padding="5px"
                     on:click=tx.contra_map(|_| HostUtilsModel::TransmitWsMsg(Command::AddPtsIndex))
                 >
-                    "+"
+                    <u>"+"</u>
                 </button>
                 <button style:padding="5px"
                     on:click=tx.contra_map(|_| HostUtilsModel::TransmitWsMsg(Command::SubPtsIndex))
                 >
-                    "-"
+                    <u>"-"</u>
                 </button>
                 <br/>
 
@@ -90,7 +90,7 @@ impl Component for HostUtils {
                         Command::OpenBuzzer
                     ))
                 >
-                    "open buzzer"
+                    <u>"o"</u>"pen buzzer"
                 </button>
 
                 <button class="bright"
@@ -105,7 +105,7 @@ impl Component for HostUtils {
                         Command::EndRound
                     ))
                 >
-                    "end round"
+                    <u>"e"</u>"nd round"
                 </button>
 
                 <span
@@ -134,7 +134,7 @@ impl Component for HostUtils {
                             Command::OwnerCorrect
                         ))
                     >
-                        "correct"
+                        <u>"c"</u>"orrect"
                     </button>
                     " or "
                     <button class="bright" style:padding="0 8px"
@@ -142,7 +142,7 @@ impl Component for HostUtils {
                             Command::OwnerIncorrect
                         ))
                     >
-                        "incorrect"
+                        <u>"i"</u>"ncorrect"
                     </button>
                     "?"
                 </span>
@@ -153,7 +153,7 @@ impl Component for HostUtils {
                         !state.game_state.history.iter().any(|cmd| cmd.from_host())
                     })
                 >
-                    "⎌ undo "
+                    "⎌ "<u>"u"</u>"ndo "
                     {self.state.recv().branch_map(|state| {
                         state.game_state.format_nth_command(0).unwrap_or_default()
                     })}

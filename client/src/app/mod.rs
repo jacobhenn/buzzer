@@ -3,6 +3,7 @@ pub mod display_buzzer;
 pub mod display_scores;
 pub mod host_utils;
 pub mod setup;
+use crate::utils::event_keyboard_key;
 use crate::{
     app::display_buzzer::DisplayBuzzer,
     utils::{send_command, ClientState, PageState},
@@ -55,6 +56,10 @@ pub enum AppModel {
     /// Sent to the App to instruct it to rearrange its children to display the
     /// given page state
     Transition(PageState),
+    /// Sent to the App when the user presses any key while the window is focused. This cannot be
+    /// handled in the ViewBuilder alone because all responders must have a `'static` lifetime and
+    /// `self` cannot be captured.
+    KeyPress(String),
 }
 
 impl Component for App {
@@ -141,23 +146,58 @@ impl Component for App {
                         .branch()
                         .forward_map(&display_scores.trns, |m| m.clone());
 
-                    // ensure that initial updates are sent to all state listners
                     self.state.visit_mut(|state| {
                         state.page_state = PageState::Play { am_host: *am_host }
                     });
                 }
-                PageState::Over { .. } => todo!(),
+                PageState::Over { code, reason } => {
+                    tx.send(&Patch::Remove { index: 1 }); // BuzzKeys
+
+                    if self.state.visit(|s| s.page_state == PageState::Play { am_host: true }) {
+                        tx.send(&Patch::Remove { index: 1 }); // HostUtils
+                    }
+
+                    self.state.visit_mut(|state| {
+                        state.page_state = PageState::Over { code: *code, reason: reason.clone() }
+                    });
+                },
+            },
+            AppModel::KeyPress(key) => {
+                if self.state.visit(|s| s.page_state == (PageState::Play { am_host: true })) {
+                    match key.as_str() {
+                        "+" => send_command(&self.ws, &Command::AddPtsIndex),
+                        "-" => send_command(&self.ws, &Command::SubPtsIndex),
+                        "o" => send_command(&self.ws, &Command::OpenBuzzer),
+                        "e" => send_command(&self.ws, &Command::EndRound),
+                        "c" => send_command(&self.ws, &Command::OwnerCorrect),
+                        "i" => send_command(&self.ws, &Command::OwnerIncorrect),
+                        "u" => send_command(&self.ws, &Command::Undo),
+                        _ => (),
+                    }
+                }
             },
         }
     }
 
     fn view(
         &self,
-        _tx: &Transmitter<AppModel>,
+        tx: &Transmitter<AppModel>,
         rx: &Receiver<Self::ViewMsg>,
     ) -> ViewBuilder<HtmlElement> {
         builder! {
-            <div patch:children=rx.branch()>
+            <div>
+                <div patch:children=rx.branch()>
+                </div>
+                <span id="version">
+                    {env!("CARGO_PKG_VERSION")}
+                </span>
+                <i
+                    window:keydown=tx.contra_map(|evt| {
+                        let key = event_keyboard_key(evt);
+                        AppModel::KeyPress(key)
+                    })
+                >
+                </i>
             </div>
         }
     }

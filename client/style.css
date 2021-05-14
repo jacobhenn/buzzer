@@ -98,7 +98,7 @@ input {
     transition: all 0s;
 } #topbar.open {
     background-color: #a3be8c;
-    transition: width 5s linear, margin-left 5s linear;
+    transition: width 7s linear, margin-left 7s linear;
     width: 0;
     margin-left: 50%;
 } #topbar.blocked {
@@ -130,19 +130,41 @@ input {
     color: #b48ead;
 }
 
-#hostutils {
-    font-size: 2.5rem;
-}
-
 #displayblocked {
     font-size: 2.3rem;
     font-weight: normal;
     color: #ebcb8b;
 }
 
+#ptsworth {
+    font-size: 2.3rem;
+    font-weight: normal;
+    color: #d8dee9;
+}
+
+#hostutils {
+    font-size: 2.5rem;
+}
+
+.displayscore.winner {
+    background-image: linear-gradient(to right,#bf616a,#d08770,#ebcb8b,#a3be8c,#5e81ac,#b48ead);
+    font-weight: bold;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: move 500s linear infinite;
+}
+
+@keyframes move {
+    to {
+        background-position: 4500vh;
+    }
+}
+
 input.displayscore {
     width: 10rem;
     background-color: transparent;
+    padding: 0.1rem;
+    margin: 0.1rem;
 } input.displayscore:hover {
     border-color: #4c566a;
 }
@@ -153,4 +175,8 @@ input.displayscore::placeholder {
     color: #eceff4;
 } input.displayscore::-webkit-input-placeholder {
     color: #eceff4;
+}
+
+u {
+    color: inherit;
 }

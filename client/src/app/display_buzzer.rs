@@ -59,8 +59,7 @@ impl Component for DisplayBuzzer {
         _msg: &Self::ModelMsg,
         _tx_view: &Transmitter<Self::ViewMsg>,
         _sub: &Subscriber<Self::ModelMsg>,
-    ) {
-    }
+    ) { }
 
     fn view(
         &self,
@@ -76,19 +75,38 @@ impl Component for DisplayBuzzer {
                     id="topbar"
                     class=self.rx.branch_map(|state| DisplayBuzzer::match_class(state))
                 ></div>
-                {self.rx.branch_map(|state| match state.game_state.buzzer {
-                    Buzzer::Open => "the buzzer is open".to_string(),
-                    Buzzer::Closed => "the buzzer is closed".to_string(),
-                    Buzzer::TakenBy { owner } => {
-                        let name =  state
-                            .game_state
-                            .players
-                            .get(owner)
-                            .map(|p| p.name.clone());
-                        format!("{} has buzzed in", name.unwrap_or_default())
+                {self.rx.branch_map(|state| match &state.page_state {
+                    PageState::Over { .. } => "the server has closed the connection".to_string(),
+                    _ => match state.game_state.buzzer {
+                        Buzzer::Open => "the buzzer is open".to_string(),
+                        Buzzer::Closed => "the buzzer is closed".to_string(),
+                        Buzzer::TakenBy { owner } => {
+                            let name =  state
+                                .game_state
+                                .players
+                                .get(owner)
+                                .map(|p| p.name.clone());
+                            format!("{} has buzzed in", name.unwrap_or_default())
+                        }
                     }
                 })}
                 <br/>
+
+                <div boolean:hidden=self.rx.branch_map(|state| {
+                    if let PageState::Over { .. } = state.page_state {
+                        true
+                    } else {
+                        false
+                    }
+                })>
+                    {self.rx.branch_filter_map(|state| {
+                        if let PageState::Over { reason, .. } = &state.page_state {
+                            Some(reason.into())
+                        } else {
+                            None
+                        }
+                    })}
+                </div>
 
                 <div id="displayblocked" boolean:hidden=self.rx.branch_map(|state| {
                     if let Buzzer::Open = state.game_state.buzzer {
@@ -128,6 +146,29 @@ impl Component for DisplayBuzzer {
                             }
                         }
                     )}
+                </div>
+
+                <div id="ptsworth"
+                    boolean:hidden=self.rx.branch_map(|state| {
+                        if let PageState::Over { .. } = state.page_state {
+                            true
+                        } else {
+                            false
+                        }
+                    })
+                >
+                    "for "
+                    <strong>
+                    {self.rx.branch_map(|state| {
+                        state
+                            .game_state
+                            .ptvalues
+                            .get(state.game_state.ptsindex)
+                            .map(|n| n.to_string())
+                            .unwrap_or("-".into())
+                    })}
+                    </strong>
+                    " points"
                 </div>
                 <br/>
             </div>

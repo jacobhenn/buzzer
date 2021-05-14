@@ -190,3 +190,10 @@ pub fn event_keyboard_code(evt: &Event) -> String {
     let kbd_event: &KeyboardEvent = evt.unchecked_ref();
     kbd_event.code()
 }
+
+/// Takes an event and returns `evt.key`. Useful inside of
+/// event handlers such as onkeydown.
+pub fn event_keyboard_key(evt: &Event) -> String {
+    let kbd_event: &KeyboardEvent = evt.unchecked_ref();
+    kbd_event.key()
+}
