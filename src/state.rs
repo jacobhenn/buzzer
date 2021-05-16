@@ -58,6 +58,11 @@ impl Handler<Command> for ServerState {
                 });
             }
 
+            if let Command::Buzz { .. } = msg {
+                let time = Instant::now() - self.last_opened;
+                debug!(" -> {:?} after the buzzer opened", time);
+            }
+
             if let Ok(cmdser) = CmdSer::new(&msg) {
                 for socket in self.registry.0.values() {
                     socket.do_send(cmdser.clone());

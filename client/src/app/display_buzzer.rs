@@ -34,7 +34,7 @@ impl DisplayBuzzer {
                         "open".to_string()
                     }
                 }
-                Buzzer::Closed => "displaybuzzer closed".to_string(),
+                Buzzer::Closed => "closed".to_string(),
                 Buzzer::TakenBy { owner } => {
                     if state.contestants.iter().any(|c| c.index == owner) {
                         "takenbyme".to_string()
